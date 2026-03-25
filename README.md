@@ -138,7 +138,8 @@ The project environment is located at:
 
 **1. Clone / navigate to the project directory:**
 ```bash
-cd /scratch365/omendibl/Molec_Mindset/DynaMate2_V4_Claude
+git clone https://github.com/omendibleba/DynaMate2.git
+cd DynaMate2
 ```
 
 **2. Create a `.env` file with your OpenAI API key:**
@@ -148,15 +149,9 @@ echo "OPENAI_API_KEY=sk-..." > .env
 
 **3. Verify the setup:**
 ```bash
-/groups/ycolon/group-envs/agentic-tutorials/bin/python3 -c "from dynamate import AgentPool; print('OK')"
+conda activate enviroment
+python3 -c "from dynamate import AgentPool; print('OK')"
 ```
-
-For convenience, define an alias:
-```bash
-alias py=/groups/ycolon/group-envs/agentic-tutorials/bin/python3
-```
-
----
 
 ## Usage
 
@@ -477,11 +472,6 @@ This path can be changed with `--state-dir`:
 # Store state in your home directory (backed up, quota-limited)
 py main.py --state-dir ~/dynamate_state
 
-# Store state in a scratch directory
-py main.py --state-dir /scratch365/omendibl/dynamate_state
-```
-
-> **HPC note:** `/scratch365/` on Notre Dame's CRC is **not backed up** and files may be purged after extended inactivity. If you want guaranteed long-term persistence, use `--state-dir ~/dynamate_state` to store in your home directory.
 
 ### Startup Restoration Sequence
 
@@ -583,7 +573,7 @@ Extends `AgentPoolWithSupervisor` with automatic save/restore. Overrides `add_ag
 All tests are standalone scripts that can be run directly without a test runner:
 
 ```bash
-PY=/groups/ycolon/group-envs/agentic-tutorials/bin/python3
+PY=python3
 
 # DynamicToolAgent: add tools from code and file
 $PY tests/test_dynamic_agent.py
@@ -636,9 +626,6 @@ When a new agent is created via `add_agent_to_pool`, it receives no base tools. 
 
 **Conversation history resets when a new agent is added.**
 `AgentPoolWithSupervisor._rebuild_supervisor()` is called every time a new agent is added, which compiles a new supervisor graph. The `PersistentSaver` (SQLite) checkpointer is reused across rebuilds, so history from previous sessions is preserved. However, in-memory state accumulated during the current session before the rebuild may not be visible to the new graph until it is next checkpointed.
-
-**`/scratch365/` is not backed up.**
-State stored in the default `.dynamate/` directory inside the project root is not backed up and is subject to the CRC purge policy. Use `--state-dir ~/dynamate_state` for persistent storage across long periods of inactivity.
 
 **Conversation history grows indefinitely.**
 The `conversations` SQLite database accumulates checkpoint rows across sessions. There is currently no mechanism to prune old threads. You can inspect and manage the file directly with any SQLite tool (e.g. `sqlite3 .dynamate/conversations`).
