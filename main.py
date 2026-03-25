@@ -43,6 +43,7 @@ from dynamate import (
     PersistentAgentPoolWithSupervisor,
     PersistentSaver,
     PoolStore,
+    PromptEnhancer,
     build_tool_manager_v2,
     pretty_print_messages,
 )
@@ -74,7 +75,7 @@ def make_model(model_name: str):
 def build_system(
     model_name: str,
     state_dir: str,
-) -> PersistentAgentPoolWithSupervisor:
+) -> tuple[PersistentAgentPoolWithSupervisor, PromptEnhancer]:
     """
     Assemble the full multi-agent system and restore previous session state.
 
@@ -129,12 +130,14 @@ def build_system(
     # Step 4 — restore previous session state
     pool.restore_state(model_factory=make_model)
 
-    return pool
+    enhancer = PromptEnhancer(model=model, pool=pool)
+    return pool, enhancer
 
 # ── REPL ──────────────────────────────────────────────────────────────────────
 
 def run_interactive(
     pool: PersistentAgentPoolWithSupervisor,
+    enhancer: PromptEnhancer,
     thread_id: str,
     verbose: bool,
 ) -> None:
@@ -162,8 +165,11 @@ def run_interactive(
             continue
 
         try:
+            enhanced_input = enhancer.enhance(user_input)
+            if enhanced_input != user_input:
+                print(f"[enhancer] {enhanced_input}\n")
             for chunk in pool.supervisor.stream(
-                {"messages": [{"role": "user", "content": user_input}]},
+                {"messages": [{"role": "user", "content": enhanced_input}]},
                 config=config,
                 recursion_limit=25,
             ):
@@ -174,13 +180,17 @@ def run_interactive(
 
 def run_single(
     pool: PersistentAgentPoolWithSupervisor,
+    enhancer: PromptEnhancer,
     prompt: str,
     thread_id: str,
     verbose: bool,
 ) -> None:
     config = {"configurable": {"thread_id": thread_id}}
+    enhanced_prompt = enhancer.enhance(prompt)
+    if enhanced_prompt != prompt:
+        print(f"[enhancer] {enhanced_prompt}\n")
     for chunk in pool.supervisor.stream(
-        {"messages": [{"role": "user", "content": prompt}]},
+        {"messages": [{"role": "user", "content": enhanced_prompt}]},
         config=config,
         recursion_limit=25,
     ):
@@ -233,7 +243,7 @@ def main() -> None:
     thread_id = args.thread_id or str(uuid.uuid4())[:8]
 
     print(f"Building system  [model={args.model}, state={args.state_dir}] ...")
-    pool = build_system(args.model, args.state_dir)
+    pool, enhancer = build_system(args.model, args.state_dir)
     print(f"Ready.\n")
 
     if args.status:
@@ -241,9 +251,9 @@ def main() -> None:
         return
 
     if args.prompt:
-        run_single(pool, args.prompt, thread_id, args.verbose)
+        run_single(pool, enhancer, args.prompt, thread_id, args.verbose)
     else:
-        run_interactive(pool, thread_id, args.verbose)
+        run_interactive(pool, enhancer, thread_id, args.verbose)
 
 
 if __name__ == "__main__":

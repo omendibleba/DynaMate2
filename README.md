@@ -2,6 +2,8 @@
 
 **DynaMate** is a dynamic multi-agent framework built on [LangGraph](https://github.com/langchain-ai/langgraph) that allows users to register new Python functions as agent tools and create new agents at runtime — through natural language prompts — without restarting the system. All tools, agents, and conversation history are persisted to disk and restored automatically on the next session.
 
+A **Prompt Enhancer** layer sits between the user and the Supervisor. It reads the current pool state and rewrites each raw user query with explicit routing hints — agent names and relevant tool names — so users never need to know internal names to get correct routing.
+
 Originally developed as a research tool for molecular simulation workflows, DynaMate is general-purpose: any Python function with a docstring can become a callable tool.
 
 ---
@@ -27,6 +29,7 @@ Originally developed as a research tool for molecular simulation workflows, Dyna
   - [AgentPool](#agentpool)
   - [AgentPoolWithSupervisor](#agentpoolwithsupervisor)
   - [ToolManager](#toolmanager)
+  - [PromptEnhancer](#promptenhancer)
   - [DynamicToolAgent](#dynamictoolagent)
   - [PersistentAgentPoolWithSupervisor](#persistentagentpoolwithsupervisor)
 - [Adding Tools and Agents](#adding-tools-and-agents)
@@ -43,11 +46,14 @@ Originally developed as a research tool for molecular simulation workflows, Dyna
 
 ## Architecture Overview
 
-DynaMate is organized as a three-tier multi-agent system:
+DynaMate is organized as a four-tier pipeline:
 
 ```
-User prompt
+User prompt  (natural language — no tool/agent names required)
     │
+    ▼
+PromptEnhancer                ← rewrites query with explicit routing hints
+    │                            (reads live pool state on every call)
     ▼
 Supervisor                    ← routes tasks to the right agent
     ├── ToolManager           ← manages the pool (register, assign, add agents)
@@ -90,6 +96,7 @@ DynaMate2_V4_Claude/
 │   ├── __init__.py                # Public exports
 │   ├── pool.py                    # AgentPool, AgentPoolWithSupervisor
 │   ├── tool_manager.py            # build_tool_manager_v2 factory
+│   ├── prompt_enhancer.py         # PromptEnhancer (query rewriting layer)
 │   ├── dynamic_agent.py           # DynamicToolAgent (standalone, no supervisor)
 │   ├── persistence.py             # PersistentSaver, PoolStore,
 │   │                              # PersistentAgentPoolWithSupervisor
@@ -126,13 +133,6 @@ langgraph-supervisor
 langgraph-checkpoint-sqlite
 python-dotenv
 ```
-
-The project environment is located at:
-```
-/groups/ycolon/group-envs/agentic-tutorials/
-```
-
----
 
 ## Setup
 
@@ -245,6 +245,7 @@ from dynamate import (
     PersistentAgentPoolWithSupervisor,
     PersistentSaver,
     PoolStore,
+    PromptEnhancer,
     build_tool_manager_v2,
     pretty_print_messages,
 )
@@ -272,10 +273,16 @@ pool.set_system_agents([tool_manager])
 # Restore previous session
 pool.restore_state(model_factory=lambda name: ChatOpenAI(model=name, temperature=0.0))
 
-# Stream a prompt
+# Build the prompt enhancer (queries pool live on every call)
+enhancer = PromptEnhancer(model=model, pool=pool)
+
+# Stream a prompt — raw user input is enhanced before reaching the supervisor
+raw_query = "What agents do you have?"
+enhanced_query = enhancer.enhance(raw_query)
+
 config = {"configurable": {"thread_id": "my-thread"}}
 for chunk in pool.supervisor.stream(
-    {"messages": [{"role": "user", "content": "What agents do you have?"}]},
+    {"messages": [{"role": "user", "content": enhanced_query}]},
     config=config,
     recursion_limit=25,
 ):
@@ -489,9 +496,10 @@ Every time `main.py` runs, `build_system()` follows this exact sequence:
    ├── Re-exec each saved tool source block  → repopulates _tool_registry
    ├── Recreate each dynamic agent           → triggers supervisor rebuild
    └── Re-apply each assignment              → rebuilds only the target agent
+9. PromptEnhancer(model, pool) → bound to live pool; no state of its own
 ```
 
-After step 8 the system is identical to how it was at the end of the last session.
+After step 9 the system is identical to how it was at the end of the last session. The `PromptEnhancer` always reflects current pool state because it queries the pool on every `enhance()` call — no restart needed after adding agents or tools.
 
 ---
 
@@ -546,6 +554,34 @@ A dedicated ReAct agent whose only responsibility is managing the pool. It expos
 | `list_agents` | List all agents in the pool |
 
 The ToolManager never performs domain work (computation, shell commands, etc.). The initial agents (`shell_agent`, `compute_agent`, `tool_manager`) are protected and cannot be removed.
+
+### PromptEnhancer
+
+`dynamate/prompt_enhancer.py`
+
+A lightweight LLM layer that sits between the user and the Supervisor. On every call it reads the current pool state and rewrites the user's raw query to include explicit routing hints — the name of the most relevant agent and its tools — so the Supervisor can route directly without extra reasoning hops.
+
+```python
+enhancer = PromptEnhancer(model=model, pool=pool)
+
+raw   = "What is the Arrhenius factor at 400 K for a 0.30 eV barrier?"
+enhanced = enhancer.enhance(raw)
+# → "...What is the Arrhenius factor at 400 K for a 0.30 eV barrier?
+#    Use thermal_agent — it should use both boltzmann_energy and
+#    arrhenius_factor tools to compute the answer step by step."
+```
+
+**Key properties:**
+
+| Property | Detail |
+|---|---|
+| Context | `_build_pool_context()` calls `list_agents()` and `list_agent_tools()` on every invocation — always reflects the live pool |
+| LLM call | Single `model.invoke([SystemMessage, HumanMessage])` — no ReAct loop, no graph |
+| Output | Original question kept verbatim; routing instruction appended |
+| Fallback | If the pool has no agents, returns the original input unchanged (no API call made) |
+| State | Stateless — holds only a model reference and a pool reference |
+
+The `PromptEnhancer` is constructed once in `build_system()` and passed to both `run_interactive()` and `run_single()`. Because it queries the pool at call time, adding a new agent or assigning a new tool is immediately visible to the enhancer without any restart.
 
 ### DynamicToolAgent
 
@@ -634,6 +670,12 @@ The `conversations` SQLite database accumulates checkpoint rows across sessions.
 `pool_state.json` is written without file locking. Running two `main.py` sessions simultaneously against the same `--state-dir` will cause race conditions and may corrupt the JSON state. The SQLite database handles concurrent reads safely, but concurrent writes from two processes can still interleave.
 
 ### Model Limitations
+
+**The Prompt Enhancer adds one extra LLM call per user turn.**
+`PromptEnhancer.enhance()` makes a synchronous `model.invoke()` call before each supervisor invocation. For bulk scripting or latency-sensitive use cases, you can bypass the enhancer by passing the raw query directly to `pool.supervisor.stream()`. The enhancer is a convenience layer, not a hard dependency.
+
+**The Prompt Enhancer may misroute when agents have overlapping tool sets.**
+The enhancer selects the best agent based on its system prompt and assigned tools. If two agents have similar tools or descriptions, the routing hint may name the wrong agent. The Supervisor can still override the hint based on its own routing rules.
 
 **The Supervisor may not always route correctly.**
 The Supervisor is an LLM-based router. For tasks that span multiple agents (e.g. "register a tool, assign it, and then use it"), it may not always execute all steps in a single invocation. If a step is skipped, you can re-issue the specific sub-request.
