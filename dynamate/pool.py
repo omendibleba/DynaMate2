@@ -52,7 +52,8 @@ class AgentPool:
             "model": model,
             "base_tools": list(base_tools or []),
             "extra_tools": [],
-            "system_prompt": system_prompt,
+            "system_prompt": system_prompt,        # persisted; user-visible
+            "base_system_prompt": system_prompt,   # never overwritten; source of truth
         }
         self._rebuild_agent(name)
         return self
@@ -165,16 +166,35 @@ class AgentPool:
 
     # ── internal ──────────────────────────────────────────────────────────────
 
+    _AGENT_EXECUTION_RULE = (
+        "\nExecution rules:"
+        "\n  * Always call the relevant tool immediately and return its output as your answer."
+        "\n  * Never transfer back to the supervisor before a tool has been called and returned a result."
+        "\n  * Do not ask for confirmation — execute immediately."
+    )
+
     def _rebuild_agent(self, name: str) -> None:
-        entry = self._agents[name]
-        kwargs = {}
-        if entry["system_prompt"]:
-            kwargs["prompt"] = entry["system_prompt"]
+        entry   = self._agents[name]
+        base_sp = entry.get("base_system_prompt") or entry.get("system_prompt") or ""
+
+        # Auto-generate a tool-aware section from the currently assigned tools
+        extra = entry["extra_tools"]
+        if extra:
+            lines = ["\nYour assigned tools (call the matching one for each request):"]
+            for t in extra:
+                doc = (t.description or "").split("\n")[0].strip()
+                lines.append(f"  - {t.name}: {doc}")
+            tool_section = "\n".join(lines)
+        else:
+            tool_section = ""
+
+        effective_prompt = base_sp + tool_section + self._AGENT_EXECUTION_RULE
+
         entry["agent"] = create_react_agent(
             entry["model"],
             tools=entry["base_tools"] + entry["extra_tools"],
             name=name,
-            **kwargs,
+            prompt=effective_prompt,
         )
 
 
