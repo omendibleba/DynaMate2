@@ -28,6 +28,12 @@ _TOOL_MANAGER_PROMPT = (
     "- Remove tools from the registry (and unassign them from all agents).\n"
     "- Remove dynamic agents from the pool.\n"
     "- Report tool and agent status when asked.\n"
+    "- If the user pastes Python function code and asks to add, register, or\n"
+    "  use it as a tool, call register_tool_from_code with the exact code\n"
+    "  string provided. Do not write files or use any shell commands.\n"
+    "- When creating a new agent with add_agent_to_pool, always include in\n"
+    "  its system_prompt: 'Always call your tools immediately and return the\n"
+    "  complete numerical result. '\n"
     "Do not perform any domain work yourself."
 )
 
@@ -68,6 +74,12 @@ def build_tool_manager_v2(pool: AgentPoolWithSupervisor, model):
         Only that agent is rebuilt; all others are unaffected."""
         return pool.assign_tool(tool_name, agent_name)
 
+    _AGENT_EXECUTION_RULE = (
+        "\nAlways call your available tools to complete every request and return "
+        "the full result. Never transfer back to the supervisor before your tools "
+        "have been executed and you have a concrete answer."
+    )
+
     @tool
     def add_agent_to_pool(agent_name: str, system_prompt: str) -> str:
         """Create a new agent and add it to the pool.
@@ -81,7 +93,7 @@ def build_tool_manager_v2(pool: AgentPoolWithSupervisor, model):
                 name=agent_name,
                 model=model,
                 base_tools=[],
-                system_prompt=system_prompt,
+                system_prompt=system_prompt + _AGENT_EXECUTION_RULE,
             )
             return (
                 f"Agent '{agent_name}' created. "

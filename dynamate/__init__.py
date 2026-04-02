@@ -20,7 +20,7 @@ from .tool_manager import build_tool_manager_v2
 from .dynamic_agent import DynamicToolAgent
 from .persistence import PersistentSaver, PoolStore, PersistentAgentPoolWithSupervisor
 from .utils import pretty_print_messages, pretty_print_message
-from .prompt_enhancer import PromptEnhancer
+from .prompt_enhancer import PromptEnhancer, register_tools_from_prompt
 
 __all__ = [
     "AgentPool",
@@ -33,4 +33,5 @@ __all__ = [
     "pretty_print_messages",
     "pretty_print_message",
     "PromptEnhancer",
+    "register_tools_from_prompt",
 ]

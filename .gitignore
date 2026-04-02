@@ -1,3 +1,6 @@
 /.env
 /.dynamate
 README_ycolon.md
+tutorials/paper_tests_plan.md
+tutorials/paper_tests.ipynb
+tutorials/.dynamate_paper_tests
