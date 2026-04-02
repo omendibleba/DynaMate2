@@ -27,28 +27,41 @@ You are a query routing assistant for a multi-agent LLM system.
 Your ONLY job is to rewrite the user's query so it explicitly names \
 the best agent and any relevant tools.
 
-PRIORITY RULE — tool registration (apply before all rules below):
+IMPORTANT OUTPUT RULE: Never generate, invent, or prepend code to the \
+output. Never add function definitions, code blocks, or pseudocode. \
+Output ONLY the rewritten query string.
+
+PRIORITY RULE A — register from file (apply first):
+If the user's intent is to register or load tools/functions FROM A FILE \
+(message mentions a file path ending in .py, or phrases like \
+"register from file", "load from file", "tools in the file"):
+  → Route EXCLUSIVELY to tool_manager.
+  → tool_manager must call register_tool_from_file with the file path.
+  → Do NOT use register_tool_from_code for file-based registration.
+
+PRIORITY RULE B — register from code (apply second):
 If the user message contains one or more Python function definitions \
-(any line that starts with "def " followed by a function name and \
-parentheses) AND the user's intent is to add, register, save, or \
-convert that function into a system capability or tool:
+(a line in the ORIGINAL message that starts with "def " followed by a \
+function name and parentheses) AND the user's intent is to add, \
+register, save, or convert that function into a system capability:
   → Route EXCLUSIVELY to tool_manager.
   → tool_manager must call register_tool_from_code with the complete \
 function code as the argument.
-  → NEVER route such requests to shell_agent, compute_agent, or any \
-domain agent — regardless of what the function name or body contains.
+  → NEVER route such requests to domain agents.
 
 Rules:
 1. Keep the original question intact — do not paraphrase or summarise it.
-2. Append a short routing instruction after the original text:
-   "Use <agent_name> — it should use <tool_name> [and <tool_name>...] \
-to compute the answer step by step."
-3. If multiple agents are needed, chain instructions:
-   "First use <agent_A> with <tool_X>, then use <agent_B> with <tool_Y>."
-4. If you cannot identify a matching agent or tool, return the original \
+2. Read the tool descriptions in the pool state below and select ONLY the \
+tool(s) whose description directly matches what the user is asking for. \
+Do NOT list all tools an agent has — pick the minimum set needed.
+   Append: "Use <agent_name> — it should use <tool_name> to complete the request."
+3. If the task requires a strict sequence of tools, chain them explicitly:
+   "First use <agent_A> with <tool_X>, then <tool_Y>."
+4. If no tool description matches the user's request, return the original \
 query unchanged (no routing instruction).
 5. Do NOT invent agent or tool names that are not listed below.
-6. Output ONLY the rewritten query string — no preamble, no explanation.
+6. Output ONLY the rewritten query string — no preamble, no explanation, \
+no code.
 
 
 Current pool state:
@@ -93,11 +106,18 @@ class PromptEnhancer:
 
     def _build_pool_context(self) -> str:
         agents = self._pool.list_agents()
-        lines = [self._pool.list_agent_tools(name) for name in agents]
-        registry = self._pool.list_registered_tools()
-        if registry:
-            lines.append("Global tool registry: " + ", ".join(registry))
-        return "\n".join(lines)
+        lines = []
+        for name in agents:
+            entry = self._pool._agents[name]
+            all_tools = entry.get("base_tools", []) + entry.get("extra_tools", [])
+            tool_lines = []
+            for t in all_tools:
+                desc = (getattr(t, "description", "") or "").split("\n")[0].strip()
+                tool_lines.append(f"    - {t.name}: {desc}")
+            tools_block = "\n".join(tool_lines) if tool_lines else "    (no tools)"
+            sp = (entry.get("system_prompt") or "").split("\n")[0][:80]
+            lines.append(f"Agent '{name}' — {sp}\n  Tools:\n{tools_block}")
+        return "\n\n".join(lines)
 
 
 # ── Tool-registration helper ──────────────────────────────────────────────
