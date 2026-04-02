@@ -15,6 +15,8 @@ The ToolManager is the single agent responsible for all pool management:
   • list_agents               – list all agents in the pool
 """
 
+import os
+
 from langchain.tools import tool
 from langgraph.prebuilt import create_react_agent
 
@@ -139,6 +141,36 @@ def build_tool_manager_v2(pool: AgentPoolWithSupervisor, model):
         """List all agents currently in the pool."""
         return "Agents in pool:\n" + "\n".join(f"  - {a}" for a in pool.list_agents())
 
+    @tool
+    def view_tool_source(tool_name: str) -> str:
+        """Show the source code of a registered tool.
+        Returns the content of the tool's .py file so the user can read and edit it."""
+        if not hasattr(pool, "_pool_store"):
+            src = pool._source_registry.get(tool_name) if hasattr(pool, "_source_registry") else None
+            return src if src else f"Tool '{tool_name}' not found in registry."
+        path = pool._pool_store.tool_path(tool_name)
+        if not os.path.exists(path):
+            return f"No source file found for '{tool_name}'. The tool may not be registered."
+        with open(path) as f:
+            return f"# {path}\n\n{f.read()}"
+
+    @tool
+    def reload_tool_from_file(tool_name: str) -> str:
+        """Re-load a tool from its .py file after the user has edited it externally.
+        Re-executes the updated file and replaces the old definition in the live registry.
+        The user should edit the .py file in their editor first, then call this."""
+        if not hasattr(pool, "_pool_store"):
+            return "reload_tool_from_file requires a PersistentAgentPoolWithSupervisor."
+        path = pool._pool_store.tool_path(tool_name)
+        if not os.path.exists(path):
+            return f"No source file found for '{tool_name}'. Register the tool first."
+        with open(path) as f:
+            source = f.read()
+        # Drop stale registration so register_tool_from_code does not skip it
+        pool._tool_registry.pop(tool_name, None)
+        pool._source_registry.pop(tool_name, None)
+        return pool.register_tool_from_code(source)
+
     return create_react_agent(
         model,
         tools=[
@@ -151,6 +183,8 @@ def build_tool_manager_v2(pool: AgentPoolWithSupervisor, model):
             list_registered_tools,
             list_agent_tools,
             list_agents,
+            view_tool_source,
+            reload_tool_from_file,
         ],
         name="tool_manager",
         prompt=_TOOL_MANAGER_PROMPT,

@@ -1,6 +1,9 @@
 /.env
 /.dynamate
+/.claude
 README_ycolon.md
 tutorials/paper_tests_plan.md
 tutorials/paper_tests.ipynb
 tutorials/.dynamate_paper_tests
+tutorials/dynamate_tutorial_/
+tutorials/paper_tests_3_state/

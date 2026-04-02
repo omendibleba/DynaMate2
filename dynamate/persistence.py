@@ -67,25 +67,27 @@ class PersistentSaver(SqliteSaver):
 
 class PoolStore:
     """
-    Reads and writes dynamic pool state to a JSON file.
+    Reads and writes dynamic pool state to a JSON file plus per-tool .py files.
 
     Persisted state
     ───────────────
-    tools          : {tool_name: source_code_string}
-    dynamic_agents : {agent_name: {system_prompt, model_name}}
-    assignments    : {agent_name: [tool_name, ...]}
+    pool_state.json  : tool names (list), dynamic_agents, assignments
+    tools/<name>.py  : full source code for each registered tool (human-editable)
 
     Initial agents (shell_agent, compute_agent) are always rebuilt fresh by
     build_system() and are NOT included in dynamic_agents.
     """
 
-    _EMPTY: dict = {"tools": {}, "dynamic_agents": {}, "assignments": {}}
+    _EMPTY: dict = {"tools": [], "dynamic_agents": {}, "assignments": {}}
 
     def __init__(self, path: str):
         self.path = path
-        parent = os.path.dirname(path)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
+        parent = os.path.dirname(os.path.abspath(path))
+        os.makedirs(parent, exist_ok=True)
+        self.tools_dir = os.path.join(parent, "tools")
+        os.makedirs(self.tools_dir, exist_ok=True)
+
+    # ── JSON state ────────────────────────────────────────────────────────────
 
     def load(self) -> dict:
         if not os.path.exists(self.path):
@@ -96,6 +98,33 @@ class PoolStore:
     def save(self, state: dict) -> None:
         with open(self.path, "w") as f:
             json.dump(state, f, indent=2)
+
+    # ── per-tool .py files ────────────────────────────────────────────────────
+
+    def tool_path(self, name: str) -> str:
+        """Absolute path to the .py file for *name*."""
+        return os.path.join(self.tools_dir, f"{name}.py")
+
+    def save_tool(self, name: str, source: str) -> None:
+        """Write tool source to tools/<name>.py."""
+        with open(self.tool_path(name), "w") as f:
+            f.write(source)
+
+    def delete_tool(self, name: str) -> None:
+        """Remove tools/<name>.py if it exists."""
+        p = self.tool_path(name)
+        if os.path.exists(p):
+            os.remove(p)
+
+    def load_tools(self) -> dict:
+        """Return {name: source} for every .py file in the tools/ directory."""
+        tools = {}
+        if os.path.isdir(self.tools_dir):
+            for fname in sorted(os.listdir(self.tools_dir)):
+                if fname.endswith(".py"):
+                    with open(os.path.join(self.tools_dir, fname)) as f:
+                        tools[fname[:-3]] = f.read()
+        return tools
 
 
 # ── Persistent pool ────────────────────────────────────────────────────────────
@@ -155,7 +184,7 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
 
     def register_tool_from_code(self, code: str) -> str:
         result = super().register_tool_from_code(code)
-        # Track source code for each newly registered tool
+        # Track source code for each newly registered tool and write .py file
         if "Registered:" in result:
             namespace: dict = {}
             try:
@@ -163,6 +192,7 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
                 for name, obj in namespace.items():
                     if callable(obj) and not name.startswith("_") and name in self._tool_registry:
                         self._source_registry[name] = textwrap.dedent(code)
+                        self._pool_store.save_tool(name, self._source_registry[name])
             except Exception:
                 pass
         if not self._loading:
@@ -179,6 +209,7 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
         result = super().remove_tool(tool_name)
         if "not in registry" not in result:
             self._source_registry.pop(tool_name, None)
+            self._pool_store.delete_tool(tool_name)
             if not self._loading:
                 self._autosave()
         return result
@@ -204,8 +235,9 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
         ----------
         model_factory : callable(model_name: str) → LangChain chat model
         """
-        state = self._pool_store.load()
-        n_tools   = len(state.get("tools", {}))
+        state     = self._pool_store.load()
+        tool_sources = self._pool_store.load_tools()
+        n_tools   = len(tool_sources)
         n_agents  = len(state.get("dynamic_agents", {}))
         n_assigns = sum(len(v) for v in state.get("assignments", {}).values())
 
@@ -215,9 +247,15 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
 
         self._loading = True
         try:
-            # 1. Re-register tools from source code (de-duplicate code blocks)
+            # 1. Re-register tools from .py files (new format) or JSON dict (old format)
+            raw_tools = state.get("tools", {})
+            if isinstance(raw_tools, dict) and raw_tools:
+                # Old format: migrate source from JSON into .py files on the fly
+                for name, src in raw_tools.items():
+                    self._pool_store.save_tool(name, src)
+                tool_sources = self._pool_store.load_tools()
             seen_sources: set = set()
-            for name, source in state.get("tools", {}).items():
+            for name, source in tool_sources.items():
                 if source not in seen_sources:
                     self.register_tool_from_code(source)
                     seen_sources.add(source)
@@ -254,7 +292,7 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
 
     def _autosave(self) -> None:
         state = {
-            "tools": dict(self._source_registry),
+            "tools": list(self._source_registry.keys()),
             "dynamic_agents": {
                 name: {
                     "system_prompt": self._agents[name].get("system_prompt") or "",
