@@ -254,7 +254,22 @@ class AgentPoolWithSupervisor(AgentPool):
 
         kwargs = {}
         if self._supervisor_prompt:
-            kwargs["prompt"] = self._supervisor_prompt
+            # Build a live agent-description block so the supervisor always
+            # knows every current agent, its tools, and its role.
+            lines = ["Available agents (auto-updated):"]
+            for sys_agent in self._system_agents:
+                aname = getattr(sys_agent, "name", str(sys_agent))
+                lines.append(f"  - {aname}")
+            for aname, entry in self._agents.items():
+                tools = (
+                    [t.name for t in entry.get("base_tools", [])]
+                    + [t.name for t in entry.get("extra_tools", [])]
+                )
+                tool_str = ", ".join(tools) if tools else "no tools yet"
+                sp = (entry.get("system_prompt") or "").split("\n")[0][:80]
+                lines.append(f"  - {aname}  [tools: {tool_str}]  — {sp}")
+            agent_block = "\n".join(lines)
+            kwargs["prompt"] = self._supervisor_prompt + "\n\n" + agent_block
 
         self._supervisor = create_supervisor(
             model=self._supervisor_model,
