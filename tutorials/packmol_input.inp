@@ -1,0 +1,20 @@
+tolerance 2.5
+filetype xyz
+output ./nacl_water_box.xyz
+seed 12345
+
+structure water.xyz
+  number 267
+  inside box 0. 0. 0. 20.0 20.0 20.0
+end structure
+
+structure na.xyz
+  number 1
+  inside box 0. 0. 0. 20.0 20.0 20.0
+end structure
+
+structure cl.xyz
+  number 1
+  inside box 0. 0. 0. 20.0 20.0 20.0
+end structure
+
