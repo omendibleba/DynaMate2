@@ -168,9 +168,12 @@ class AgentPool:
 
     _AGENT_EXECUTION_RULE = (
         "\nExecution rules:"
-        "\n  * Always call the relevant tool immediately and return its output as your answer."
-        "\n  * Never transfer back to the supervisor before a tool has been called and returned a result."
-        "\n  * Do not ask for confirmation — execute immediately."
+        "\n  * You have been activated by the supervisor to perform a specific task."
+        "\n  * Your FIRST action must ALWAYS be to call one of your assigned tools — never anything else."
+        "\n  * Do NOT call transfer_back_to_supervisor until AFTER a tool has returned a result."
+        "\n  * Calling transfer_back_to_supervisor as your first action is forbidden."
+        "\n  * Do not ask for confirmation, do not explain what you are about to do — just call the tool."
+        "\n  * Return the tool's output directly as your final answer."
     )
 
     def _rebuild_agent(self, name: str) -> None:

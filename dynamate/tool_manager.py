@@ -77,9 +77,9 @@ def build_tool_manager_v2(pool: AgentPoolWithSupervisor, model):
         return pool.assign_tool(tool_name, agent_name)
 
     _AGENT_EXECUTION_RULE = (
-        "\nAlways call your available tools to complete every request and return "
-        "the full result. Never transfer back to the supervisor before your tools "
-        "have been executed and you have a concrete answer."
+        "\nYour FIRST action must ALWAYS be to call one of your assigned tools."
+        "\nDo NOT call transfer_back_to_supervisor until AFTER a tool has returned a result."
+        "\nDo not ask for confirmation — call the tool immediately and return its output."
     )
 
     @tool
