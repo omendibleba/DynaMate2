@@ -166,24 +166,15 @@ class AgentPool:
 
     # ── internal ──────────────────────────────────────────────────────────────
 
-    _AGENT_EXECUTION_RULE = (
-        "\nExecution rules:"
-        "\n  * You have been activated by the supervisor to perform a specific task."
-        "\n  * Your FIRST action must ALWAYS be to call one of your assigned tools — never anything else."
-        "\n  * If the message contains a routing instruction that explicitly names a tool"
-        "\n    (e.g. 'it should use <tool_name>'), call THAT exact tool — do not substitute another."
-        "\n  * Do NOT call transfer_back_to_supervisor until AFTER a tool has returned a result."
-        "\n  * Calling transfer_back_to_supervisor as your first action is forbidden."
-        "\n  * Do not ask for confirmation, do not explain what you are about to do — just call the tool."
-        "\n  * Return the tool's output directly as your final answer."
-    )
-
     def _rebuild_agent(self, name: str) -> None:
         entry   = self._agents[name]
         base_sp = entry.get("base_system_prompt") or entry.get("system_prompt") or ""
 
         # Auto-generate a tool-aware section from the currently assigned tools
         extra = entry["extra_tools"]
+        base_tools = entry["base_tools"]
+        all_domain_tools = base_tools + extra
+
         if extra:
             lines = ["\nYour assigned tools (call the matching one for each request):"]
             for t in extra:
@@ -193,7 +184,20 @@ class AgentPool:
         else:
             tool_section = ""
 
-        effective_prompt = base_sp + tool_section + self._AGENT_EXECUTION_RULE
+        domain_tool_names = ", ".join(t.name for t in all_domain_tools) if all_domain_tools else "(none)"
+        execution_rule = (
+            "\nExecution rules:"
+            "\n  * You have been activated by the supervisor to perform a specific task."
+            f"\n  * Your domain tools are: {domain_tool_names}."
+            "\n  * Your FIRST action MUST be to call one of these domain tools — NEVER transfer_back_to_supervisor first."
+            "\n  * If the message names a specific tool (e.g. 'use <tool_name>'), call THAT tool exactly."
+            "\n  * transfer_back_to_supervisor is ONLY allowed AFTER a domain tool has returned a result."
+            "\n  * Calling transfer_back_to_supervisor without first calling a domain tool is a critical failure."
+            "\n  * Do not ask for confirmation, do not explain — just call the domain tool immediately."
+            "\n  * Return the tool's output directly as your final answer."
+        )
+
+        effective_prompt = base_sp + tool_section + execution_rule
 
         entry["agent"] = create_react_agent(
             entry["model"],
