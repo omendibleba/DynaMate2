@@ -170,6 +170,8 @@ class AgentPool:
         "\nExecution rules:"
         "\n  * You have been activated by the supervisor to perform a specific task."
         "\n  * Your FIRST action must ALWAYS be to call one of your assigned tools — never anything else."
+        "\n  * If the message contains a routing instruction that explicitly names a tool"
+        "\n    (e.g. 'it should use <tool_name>'), call THAT exact tool — do not substitute another."
         "\n  * Do NOT call transfer_back_to_supervisor until AFTER a tool has returned a result."
         "\n  * Calling transfer_back_to_supervisor as your first action is forbidden."
         "\n  * Do not ask for confirmation, do not explain what you are about to do — just call the tool."
