@@ -3,5 +3,15 @@
     "id": "session-20260512-113950",
     "preview": "\n    I have a Python function that can download MACE machine",
     "created_at": "2026-05-12T11:42:09.176419"
+  },
+  {
+    "id": "session-20260512-130125",
+    "preview": "Please register the tools defined in the file /scratch365/om",
+    "created_at": "2026-05-12T13:02:37.795193"
+  },
+  {
+    "id": "session-20260512-134646",
+    "preview": "Write, register, and assign a new Python tool called plot_nv",
+    "created_at": "2026-05-12T13:47:58.099990"
   }
 ]

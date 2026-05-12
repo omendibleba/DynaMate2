@@ -1,8 +1,10 @@
 {
   "tools": [
     "download_mace_model",
-    "smiles_to_xyz",
-    "packmol_build_system"
+    "packmol_build_system",
+    "plot_nvt_trajectory",
+    "run_nvt_md",
+    "smiles_to_xyz"
   ],
   "dynamic_agents": {
     "mace_md_specialist": {
@@ -14,7 +16,9 @@
     "mace_md_specialist": [
       "download_mace_model",
       "smiles_to_xyz",
-      "packmol_build_system"
+      "packmol_build_system",
+      "run_nvt_md",
+      "plot_nvt_trajectory"
     ]
   }
 }

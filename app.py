@@ -52,7 +52,7 @@ _STATE_DIR  = os.path.join(_ROOT, "ui_state")
 _UPLOADS    = os.path.join(_STATE_DIR, "uploads")
 _THREADS_DB = os.path.join(_STATE_DIR, "threads.json")
 _TUTORIALS  = os.path.join(_ROOT, "tutorials")
-_MODEL_NAME = os.getenv("DYNAMATE_MODEL", "gpt-4o-mini")
+_MODEL_NAME = os.getenv("DYNAMATE_MODEL", "gpt-4.1-mini")
 
 
 def _tut(relpath: str) -> str:
@@ -380,10 +380,10 @@ def select_thread(selection: str | None) -> str:
     return selection.split("  —")[0].strip()
 
 
-def handle_upload(filepath: str | None) -> tuple[str, str]:
-    """Copy uploaded file to ui_state/uploads/ and return (prompt, path_display)."""
+def handle_upload(filepath: str | None) -> tuple[str, str, str]:
+    """Copy uploaded file to ui_state/uploads/ and return (prompt, path_display, prompt_preview)."""
     if not filepath:
-        return "", ""
+        return "", "", ""
     filename = os.path.basename(filepath)
     dest = os.path.join(_UPLOADS, filename)
     shutil.copy(filepath, dest)
@@ -391,7 +391,7 @@ def handle_upload(filepath: str | None) -> tuple[str, str]:
         f"Please register the tools defined in the file {dest}. "
         "Update any existing tools with the same name."
     )
-    return prompt, dest
+    return prompt, dest, prompt
 
 # ── CSS ──────────────────────────────────────────────────────────────────────────
 
@@ -443,11 +443,13 @@ footer { display: none !important; }
     margin-right: 0.35rem;
 }
 
-/* ── Quick-start tabs ── */
-#qs-tabs .tab-nav button {
-    font-size: 0.82rem !important;
-    font-weight: 600 !important;
-    padding: 0.4rem 1rem !important;
+/* ── Quick-start accordion headers ── */
+#acc-prompt > .label-wrap button,
+#acc-script > .label-wrap button,
+#acc-llm    > .label-wrap button,
+#acc-run    > .label-wrap button {
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
 }
 
 /* ── Group labels ── */
@@ -470,7 +472,7 @@ footer { display: none !important; }
     font-size: 0.78rem !important;
     font-weight: 600 !important;
     width: 100% !important;
-    transition: all 0.15s ease !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease !important;
 }
 .btn-prompt button:hover { background: #dbeafe !important; border-color: #93c5fd !important; }
 
@@ -482,7 +484,7 @@ footer { display: none !important; }
     font-size: 0.78rem !important;
     font-weight: 600 !important;
     width: 100% !important;
-    transition: all 0.15s ease !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease !important;
 }
 .btn-file button:hover { background: #dcfce7 !important; border-color: #86efac !important; }
 
@@ -494,7 +496,7 @@ footer { display: none !important; }
     font-size: 0.78rem !important;
     font-weight: 600 !important;
     width: 100% !important;
-    transition: all 0.15s ease !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease !important;
 }
 .btn-llm button:hover { background: #f3e8ff !important; }
 
@@ -506,7 +508,7 @@ footer { display: none !important; }
     font-size: 0.78rem !important;
     font-weight: 600 !important;
     width: 100% !important;
-    transition: all 0.15s ease !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease !important;
 }
 .btn-run button:hover { background: #ffedd5 !important; }
 
@@ -553,126 +555,131 @@ with gr.Blocks(title="DynaMate2") as demo:
     """)
 
     # ── Quick-start tabs ───────────────────────────────────────────────────────────
-    with gr.Tabs(elem_id="qs-tabs"):
+    # ── Section 1: From Prompt ────────────────────────────────────────────────────
+    with gr.Accordion("📋  From Prompt", open=True, elem_id="acc-prompt"):
+        gr.HTML(
+            '<p class="group-label">Register tools by pasting Python code inline '
+            '— mirrors paper_tests_7 cells 10 · 12 · 14</p>'
+        )
+        with gr.Row():
+            with gr.Column(scale=1):
+                t1a_btn = gr.Button(
+                    "① Register download_mace_model",
+                    elem_classes=["btn-prompt"], size="sm",
+                )
+                gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
+                        'Sends full function source as part of the prompt</p>')
+            with gr.Column(scale=1):
+                t1b_btn = gr.Button(
+                    "② Register smiles_to_xyz + packmol_build_system",
+                    elem_classes=["btn-prompt"], size="sm",
+                )
+                gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
+                        'Sends both function sources inline</p>')
+            with gr.Column(scale=1):
+                t1c_btn = gr.Button(
+                    "③ Create mace_md_specialist",
+                    elem_classes=["btn-prompt"], size="sm",
+                )
+                gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
+                        'Natural-language request · no code pasted</p>')
 
-        # ── Tab 1: From Prompt ────────────────────────────────────────────────────
-        with gr.TabItem("📋  From Prompt"):
-            gr.HTML(
-                '<p class="group-label">Register tools by pasting Python code inline '
-                '— mirrors paper_tests_7 cells 10 · 12 · 14</p>'
-            )
-            with gr.Row():
-                with gr.Column(scale=1):
-                    t1a_btn = gr.Button(
-                        "① Register download_mace_model",
-                        elem_classes=["btn-prompt"], size="sm",
-                    )
-                    gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
-                            'Sends full function source as part of the prompt</p>')
-                with gr.Column(scale=1):
-                    t1b_btn = gr.Button(
-                        "② Register smiles_to_xyz + packmol_build_system",
-                        elem_classes=["btn-prompt"], size="sm",
-                    )
-                    gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
-                            'Sends both function sources inline</p>')
-                with gr.Column(scale=1):
-                    t1c_btn = gr.Button(
-                        "③ Create mace_md_specialist",
-                        elem_classes=["btn-prompt"], size="sm",
-                    )
-                    gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
-                            'Natural-language request · no code pasted</p>')
+    # ── Section 2: From Script ────────────────────────────────────────────────────
+    with gr.Accordion("📄  From Script", open=False, elem_id="acc-script"):
+        gr.HTML(
+            '<p class="group-label">Upload a .py file — its path is injected into the '
+            'prompt automatically · mirrors paper_tests_7 cell 30</p>'
+        )
+        with gr.Row():
+            with gr.Column(scale=1):
+                upload_widget = gr.File(
+                    label="Upload a Python tool script (.py)",
+                    file_types=[".py"],
+                    elem_id="upload-zone",
+                )
+                upload_path_box = gr.Textbox(
+                    label="Saved path",
+                    interactive=False,
+                    lines=1,
+                    elem_id="upload-path",
+                    placeholder="Saved path appears here after upload.",
+                )
+                upload_preview_box = gr.Textbox(
+                    label="Auto-generated prompt (editable before sending)",
+                    interactive=True,
+                    lines=3,
+                    elem_classes=["monospace"],
+                    placeholder="The prompt that will be sent to the agent appears here after upload.",
+                )
+            with gr.Column(scale=1):
+                gr.HTML(
+                    '<p class="group-label" style="margin-bottom:0.6rem;">'
+                    'Or use the pre-loaded NVT script</p>'
+                )
+                t3a_btn = gr.Button(
+                    "④ Register run_nvt_md from ASE_NVT_PBC.py",
+                    elem_classes=["btn-file"], size="sm",
+                )
+                gr.HTML(
+                    '<p style="font-size:0.72rem;color:#64748b;margin:0.3rem 0 0 0;">'
+                    f'File: <code>tutorials/ASE_NVT_PBC.py</code><br>'
+                    'Assigns run_nvt_md to mace_md_specialist</p>'
+                )
 
-        # ── Tab 2: From Script ────────────────────────────────────────────────────
-        with gr.TabItem("📄  From Script"):
-            gr.HTML(
-                '<p class="group-label">Upload a .py file — its path is injected into the '
-                'prompt automatically · mirrors paper_tests_7 cell 30</p>'
-            )
-            with gr.Row():
-                with gr.Column(scale=1):
-                    upload_widget = gr.File(
-                        label="Upload a Python tool script (.py)",
-                        file_types=[".py"],
-                        elem_id="upload-zone",
-                    )
-                    upload_path_box = gr.Textbox(
-                        label="Saved path (prompt auto-filled on upload)",
-                        interactive=False,
-                        lines=2,
-                        elem_id="upload-path",
-                        placeholder="Upload a .py file above — the register prompt will appear here and in the chat input.",
-                    )
-                with gr.Column(scale=1):
-                    gr.HTML(
-                        '<p class="group-label" style="margin-bottom:0.6rem;">'
-                        'Or use the pre-loaded NVT script</p>'
-                    )
-                    t3a_btn = gr.Button(
-                        "④ Register run_nvt_md from ASE_NVT_PBC.py",
-                        elem_classes=["btn-file"], size="sm",
-                    )
-                    gr.HTML(
-                        '<p style="font-size:0.72rem;color:#64748b;margin:0.3rem 0 0 0;">'
-                        f'File: <code>tutorials/ASE_NVT_PBC.py</code><br>'
-                        'Assigns run_nvt_md to mace_md_specialist</p>'
-                    )
+    # ── Section 3: From LLM ───────────────────────────────────────────────────────
+    with gr.Accordion("🤖  From LLM", open=False, elem_id="acc-llm"):
+        gr.HTML(
+            '<p class="group-label">Ask the agent to write, register, and assign a '
+            'brand-new tool from a description — mirrors paper_tests_7 cell 38</p>'
+        )
+        with gr.Row():
+            with gr.Column(scale=1):
+                t4a_btn = gr.Button(
+                    "⑤ Write & register plot_nvt_trajectory",
+                    elem_classes=["btn-llm"], size="sm",
+                )
+                gr.HTML(
+                    '<p style="font-size:0.72rem;color:#64748b;margin:0.3rem 0 0 0;">'
+                    'LLM writes the plotting function from a spec,<br>'
+                    'registers it, and assigns it to mace_md_specialist</p>'
+                )
+            with gr.Column(scale=2):
+                gr.Textbox(
+                    value=PROMPT_T4A,
+                    label="Prompt preview",
+                    interactive=False,
+                    lines=12,
+                    elem_classes=["monospace"],
+                )
 
-        # ── Tab 3: From LLM ───────────────────────────────────────────────────────
-        with gr.TabItem("🤖  From LLM"):
-            gr.HTML(
-                '<p class="group-label">Ask the agent to write, register, and assign a '
-                'brand-new tool from a description — mirrors paper_tests_7 cell 38</p>'
-            )
-            with gr.Row():
-                with gr.Column(scale=1):
-                    t4a_btn = gr.Button(
-                        "⑤ Write & register plot_nvt_trajectory",
-                        elem_classes=["btn-llm"], size="sm",
-                    )
-                    gr.HTML(
-                        '<p style="font-size:0.72rem;color:#64748b;margin:0.3rem 0 0 0;">'
-                        'LLM writes the plotting function from a spec,<br>'
-                        'registers it, and assigns it to mace_md_specialist</p>'
-                    )
-                with gr.Column(scale=2):
-                    gr.Textbox(
-                        value=PROMPT_T4A,
-                        label="Prompt preview",
-                        interactive=False,
-                        lines=12,
-                        elem_classes=["monospace"],
-                    )
-
-        # ── Tab 4: Run Simulations ────────────────────────────────────────────────
-        with gr.TabItem("▶  Run Simulations"):
-            gr.HTML(
-                '<p class="group-label">Execute the full workflow '
-                '— tools must be registered first via the tabs above</p>'
-            )
-            with gr.Row():
-                with gr.Column(scale=1):
-                    t2_btn = gr.Button(
-                        "T2 — Build NaCl + Water Box",
-                        elem_classes=["btn-run"], size="sm",
-                    )
-                    gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
-                            '1 NaCl pair + 267 H₂O · 20 Å periodic box</p>')
-                with gr.Column(scale=1):
-                    t3b_btn = gr.Button(
-                        "T3 — Run NVT MD (10 steps, 300 K)",
-                        elem_classes=["btn-run"], size="sm",
-                    )
-                    gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
-                            'MACE-MP-0b3 · ASE · nacl_water_box.xyz</p>')
-                with gr.Column(scale=1):
-                    t4b_btn = gr.Button(
-                        "T4 — Plot NVT Trajectory",
-                        elem_classes=["btn-run"], size="sm",
-                    )
-                    gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
-                            'Energy & temperature from nvt_nacl_water.traj</p>')
+    # ── Section 4: Run Simulations ────────────────────────────────────────────────
+    with gr.Accordion("▶  Run Simulations", open=False, elem_id="acc-run"):
+        gr.HTML(
+            '<p class="group-label">Execute the full workflow '
+            '— tools must be registered first via the sections above</p>'
+        )
+        with gr.Row():
+            with gr.Column(scale=1):
+                t2_btn = gr.Button(
+                    "T2 — Build NaCl + Water Box",
+                    elem_classes=["btn-run"], size="sm",
+                )
+                gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
+                        '1 NaCl pair + 267 H₂O · 20 Å periodic box</p>')
+            with gr.Column(scale=1):
+                t3b_btn = gr.Button(
+                    "T3 — Run NVT MD (10 steps, 300 K)",
+                    elem_classes=["btn-run"], size="sm",
+                )
+                gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
+                        'MACE-MP-0b3 · ASE · nacl_water_box.xyz</p>')
+            with gr.Column(scale=1):
+                t4b_btn = gr.Button(
+                    "T4 — Plot NVT Trajectory",
+                    elem_classes=["btn-run"], size="sm",
+                )
+                gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
+                        'Energy & temperature from nvt_nacl_water.traj</p>')
 
     # ── Main layout ────────────────────────────────────────────────────────────────
     with gr.Row(equal_height=False):
@@ -759,11 +766,15 @@ with gr.Blocks(title="DynaMate2") as demo:
         outputs=thread_box,
     )
 
-    # File upload → save to uploads/ + auto-fill msg_box and show saved path
+    # File upload → save to uploads/ + auto-fill msg_box, show saved path, show prompt preview
     upload_widget.upload(
         fn=handle_upload,
         inputs=upload_widget,
-        outputs=[msg_box, upload_path_box],
+        outputs=[msg_box, upload_path_box, upload_preview_box],
+    )
+    upload_widget.clear(
+        fn=lambda: ("", "", ""),
+        outputs=[msg_box, upload_path_box, upload_preview_box],
     )
 
     # Quick-start buttons → prefill msg_box
@@ -781,7 +792,7 @@ with gr.Blocks(title="DynaMate2") as demo:
 if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
-        server_port=8888,
+        server_port=int(os.environ.get("GRADIO_SERVER_PORT", "8888")),
         show_error=True,
         share=False,
         inbrowser=True,
