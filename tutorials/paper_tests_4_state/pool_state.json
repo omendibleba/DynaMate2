@@ -1,0 +1,24 @@
+{
+  "tools": [
+    "download_mace_model",
+    "smiles_to_xyz",
+    "packmol_build_system",
+    "run_nvt_md",
+    "plot_nvt_trajectory"
+  ],
+  "dynamic_agents": {
+    "mace_md_specialist": {
+      "system_prompt": "You are a dedicated specialist in MACE and molecular dynamics simulations. Always call your tools immediately and return the complete numerical result.\nYour FIRST action must ALWAYS be to call one of your assigned tools.\nDo NOT call transfer_back_to_supervisor until AFTER a tool has returned a result.\nDo not ask for confirmation \u2014 call the tool immediately and return its output.\nAlways call your available tools to complete every request and return the full result. Never transfer back to the supervisor before your tools have been executed and you have a concrete answer.\nAlways call your available tools to complete every request and return the full result. Never transfer back to the supervisor before your tools have been executed and you have a concrete answer.\nBefore calling any preparation tool (smiles_to_xyz, packmol_build_system, download_mace_model), check whether the required output file already exists on disk. If it does, skip that preparation step entirely and proceed directly to the requested operation. Only invoke preparation tools when the required files are genuinely absent.",
+      "model_name": "gpt-4.1-mini"
+    }
+  },
+  "assignments": {
+    "mace_md_specialist": [
+      "download_mace_model",
+      "packmol_build_system",
+      "smiles_to_xyz",
+      "run_nvt_md",
+      "plot_nvt_trajectory"
+    ]
+  }
+}

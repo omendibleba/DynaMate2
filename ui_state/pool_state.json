@@ -1,0 +1,20 @@
+{
+  "tools": [
+    "download_mace_model",
+    "smiles_to_xyz",
+    "packmol_build_system"
+  ],
+  "dynamic_agents": {
+    "mace_md_specialist": {
+      "system_prompt": "Always call your tools immediately and return the complete numerical result. I specialize in MACE and molecular dynamics simulations.\nYour FIRST action must ALWAYS be to call one of your assigned tools.\nDo NOT call transfer_back_to_supervisor until AFTER a tool has returned a result.\nIf all the needed data is available call the tool immediately and do not ask for confirmation. Excecuthe the tool suggested in the prompt.",
+      "model_name": "gpt-4o-mini"
+    }
+  },
+  "assignments": {
+    "mace_md_specialist": [
+      "download_mace_model",
+      "smiles_to_xyz",
+      "packmol_build_system"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+tolerance 2.5
+filetype xyz
+output /scratch365/omendibl/Molec_Mindset/DynaMate2_prod/tutorials/packed_nacl_water_box.xyz
+seed 12345
+
+structure /scratch365/omendibl/Molec_Mindset/DynaMate2_prod/tutorials/nacl_water_box.xyz
+  number 1
+  inside box 0. 0. 0. 20.0 20.0 20.0
+end structure
+

@@ -1,0 +1,12 @@
+/.env
+/.dynamate
+/.claude
+README_ycolon.md
+tutorials/paper_tests_plan.md
+#tutorials/paper_tests.ipynb
+tutorials/.dynamate_paper_tests
+tutorials/dynamate_tutorial_/
+#tutorials/paper_tests_3_state/
+tutorials/models/
+Dynamate1_paper.pdf
+DynaMate2-V3.0.docx
