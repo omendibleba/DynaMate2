@@ -81,6 +81,11 @@ _SUPERVISOR_PROMPT = (
     "    to tool_manager — tool_manager only manages the pool, it cannot execute\n"
     "    domain work.\n"
     "  * If no specialist exists for the task, ask tool_manager to create one first.\n\n"
+    "Handoff rules:\n"
+    "  * When routing to a specialist, copy ALL specific parameters from the user\n"
+    "    request verbatim into the handoff message: exact file paths, numerical values,\n"
+    "    output locations. Do not paraphrase — specialists need exact values to call\n"
+    "    their tools correctly.\n\n"
     "Execution rules:\n"
     "  * If you have all you need execute tasks immediately.\n"
     "  * When a specialist agent completes a calculation, report the full numerical\n"
@@ -130,6 +135,13 @@ PROMPT_T1C = (
     "\n"
 )
 
+# ── T1_run: Download MACE-MP-0b3 model ─────────────────────────────────────────
+# Mirrors paper_tests_7 cell 23 — p3
+PROMPT_T1_RUN = (
+    f"Download the MACE-MP-0b3 machine learning potential and save it "
+    f"to {_tut('models')}. Please convert the model to LAMMPS format."
+)
+
 # ── T2: Build NaCl + water box ──────────────────────────────────────────────────
 # Mirrors paper_tests_7 cell 27 — query_T2
 # Notebook uses os.path.join('./', ...) from tutorials/; we use absolute paths.
@@ -152,13 +164,16 @@ PROMPT_T3A = (
 # ── T3b: Run NVT MD ─────────────────────────────────────────────────────────────
 # Mirrors paper_tests_7 cell 35 — query_T3_run
 PROMPT_T3B = (
-    "Please run a short NVT molecular dynamics simulation using ASE. "
-    "(use the run_nvt_md tool from the mace_md_specialist ) "
-    f"Use the MACE model at {_tut('models/mace-mp-0b3-medium.model')}, "
-    f"the structure file {_tut('nacl_water_box.xyz')}, "
-    "a box size of 20.0 Angstrom, "
-    "a temperature of 300 K, and 10 steps. "
-    f"Save the trajectory to {_tut('nvt_nacl_water.traj')}."
+    "Please run a short NVT molecular dynamics simulation using the run_nvt_md tool.\n"
+    "The model file is already on disk — do NOT call download_mace_model.\n"
+    f"model_path     = {_tut('models/mace-mp-0b3-medium.model')}\n"
+    f"structure_file = {_tut('nacl_water_box.xyz')}\n"
+    "box_size        = 20.0\n"
+    "temperature_K   = 300.0\n"
+    "n_steps         = 10\n"
+    "traj_interval   = 10\n"
+    f"output_traj    = {_tut('nvt_nacl_water.traj')}\n"
+    "Execute run_nvt_md immediately with these parameters."
 )
 
 # ── T4a: Ask LLM to write, register, and assign plot_nvt_trajectory ─────────────
@@ -191,6 +206,25 @@ PROMPT_T4B = (
     f"Plot the NVT trajectory at {_tut('nvt_nacl_water.traj')}. "
     "Use a timestep of 0.5 fs. "
     f"Save the figure to {_tut('nvt_nacl_water_analysis.png')}."
+)
+
+# ── Final integration workflow: full MD pipeline from a single prompt ────────────
+# Mirrors paper_tests_7 cell 45 — query_final
+_wf_mol_xyz  = _tut("methanol.xyz")
+_wf_box_xyz  = _tut("methanol_box.xyz")
+_wf_traj     = _tut("methanol_nvt.traj")
+_wf_png      = _tut("methanol_nvt_analysis.png")
+_wf_box_size = 15.0
+
+PROMPT_WORKFLOW_FINAL = (
+    "I need a complete NVT molecular dynamics study of liquid methanol from scratch. "
+    f"Use the MACE-MP-0b3 force field and save the model to {_tut('models')}. "
+    f"Convert the methanol SMILES (CO) to a 3D structure and save it to {_wf_mol_xyz}. "
+    f"Build a periodic cubic box of {_wf_box_size} Angstrom containing 50 methanol "
+    f"molecules and save it to {_wf_box_xyz}. "
+    "Run a 100-step NVT simulation at 300 K with a 0.5 fs timestep using ASE "
+    f"and save the trajectory to {_wf_traj}. "
+    f"Finally, plot the energy and temperature evolution and save the figure to {_wf_png}."
 )
 
 # ── System initialisation ────────────────────────────────────────────────────────
@@ -231,6 +265,14 @@ def _build_system() -> tuple:
     pool.restore_state(
         model_factory=lambda name: ChatOpenAI(model=name, temperature=0.0)
     )
+    # Mirrors notebook Cell 22: rebuild every dynamic agent so the latest
+    # execution rules (from pool._rebuild_agent) take effect after restore.
+    _STATIC = {"shell_agent", "compute_agent"}
+    for _name in list(pool._agents):
+        if _name not in _STATIC:
+            pool._rebuild_agent(_name)
+    pool._rebuild_supervisor()
+
     enhancer = PromptEnhancer(model=model, pool=pool)
     return pool, enhancer
 
@@ -276,21 +318,33 @@ def _save_thread(thread_id: str, preview: str) -> None:
 
 # ── Status helpers ───────────────────────────────────────────────────────────────
 
-def _get_status_text() -> str:
-    lines = ["AGENTS", "─" * 34]
+def _get_status_html() -> str:
+    parts = [
+        '<div class="status-panel">',
+        '<div class="status-section-title">🤖 Agents</div>',
+    ]
     for name in pool.list_agents():
         entry = pool._agents[name]
         base  = [t.name for t in entry.get("base_tools",  [])]
         extra = [t.name for t in entry.get("extra_tools", [])]
-        lines.append(f"  {name}")
-        if base:
-            lines.append(f"    base : {', '.join(base)}")
-        if extra:
-            lines.append(f"    tools: {', '.join(extra)}")
+        parts.append('<div class="status-agent">')
+        parts.append(f'<span class="agent-name">{name}</span>')
+        for t in base:
+            parts.append(f'<span class="chip chip-base">{t}</span>')
+        for t in extra:
+            parts.append(f'<span class="chip chip-tool">{t}</span>')
+        parts.append('</div>')
     reg = pool.list_registered_tools()
-    lines += ["", "REGISTRY", "─" * 34]
-    lines += ([f"  {t}" for t in reg] if reg else ["  (empty)"])
-    return "\n".join(lines)
+    parts.append('<div class="status-section-title" style="margin-top:0.8rem;">🛠 Tool Registry</div>')
+    if reg:
+        parts.append('<div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.2rem;">')
+        for t in reg:
+            parts.append(f'<span class="chip chip-registry">{t}</span>')
+        parts.append('</div>')
+    else:
+        parts.append('<span class="status-empty">empty — register tools above</span>')
+    parts.append('</div>')
+    return '\n'.join(parts)
 
 # ── Stream chunk parsing ─────────────────────────────────────────────────────────
 
@@ -329,7 +383,7 @@ def _parse_chunk(chunk) -> tuple[str | None, str, bool]:
 
 def respond(message: str, history: list, thread_id: str):
     if not message.strip():
-        yield history, "", _get_status_text()
+        yield history, "", _get_status_html()
         return
 
     tid          = thread_id.split("  —")[0].strip()
@@ -344,7 +398,7 @@ def respond(message: str, history: list, thread_id: str):
             {"role": "assistant", "content": answer},
         ]
 
-    yield _build_history("…"), "\n".join(trace_lines), _get_status_text()
+    yield _build_history("…"), "\n".join(trace_lines), _get_status_html()
 
     try:
         for chunk in pool.supervisor.stream(
@@ -357,15 +411,15 @@ def respond(message: str, history: list, thread_id: str):
                 trace_lines.append(f"[{node}]  {content[:300]}")
                 if is_ai and content:
                     final_answer = content
-            yield _build_history(final_answer or "…"), "\n".join(trace_lines), _get_status_text()
+            yield _build_history(final_answer or "…"), "\n".join(trace_lines), _get_status_html()
     except Exception as exc:
         trace_lines.append(f"\n[error]  {exc}")
-        yield _build_history(f"⚠ Error: {exc}"), "\n".join(trace_lines), _get_status_text()
+        yield _build_history(f"⚠ Error: {exc}"), "\n".join(trace_lines), _get_status_html()
         return
 
     final_answer = final_answer or "(No response)"
     _save_thread(tid, message[:60])
-    yield _build_history(final_answer), "\n".join(trace_lines), _get_status_text()
+    yield _build_history(final_answer), "\n".join(trace_lines), _get_status_html()
 
 
 def do_new_thread():
@@ -523,6 +577,53 @@ footer { display: none !important; }
     background: #f0fdf4 !important;
 }
 
+/* ── System Status panel ── */
+.status-panel {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.77rem;
+    line-height: 1.6;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem 0.9rem;
+    max-height: 340px;
+    overflow-y: auto;
+}
+.status-section-title {
+    font-weight: 700;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: #475569;
+    margin: 0 0 0.35rem 0;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.status-agent {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.3rem;
+}
+.agent-name {
+    font-weight: 600;
+    color: #1e40af;
+    min-width: 130px;
+}
+.chip {
+    display: inline-block;
+    border-radius: 10px;
+    padding: 0.04rem 0.45rem;
+    font-size: 0.67rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.chip-base     { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.chip-tool     { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.chip-registry { background: #fdf4ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+.status-empty  { color: #94a3b8; font-style: italic; font-size: 0.75rem; }
+
 /* ── Chat input ── */
 #send-row textarea {
     border-radius: 8px !important;
@@ -660,19 +761,27 @@ with gr.Blocks(title="DynaMate2") as demo:
         )
         with gr.Row():
             with gr.Column(scale=1):
+                t1_run_btn = gr.Button(
+                    "T1 — Download MACE-Foundation Models",
+                    elem_classes=["btn-run"], size="sm",
+                )
+                gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
+                        'Downloads MACE-MP-0b3 · skips if model already present</p>')
+            with gr.Column(scale=1):
                 t2_btn = gr.Button(
                     "T2 — Build NaCl + Water Box",
                     elem_classes=["btn-run"], size="sm",
                 )
                 gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
                         '1 NaCl pair + 267 H₂O · 20 Å periodic box</p>')
+        with gr.Row():
             with gr.Column(scale=1):
                 t3b_btn = gr.Button(
                     "T3 — Run NVT MD (10 steps, 300 K)",
                     elem_classes=["btn-run"], size="sm",
                 )
                 gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
-                        'MACE-MP-0b3 · ASE · nacl_water_box.xyz</p>')
+                        'ASE · nacl_water_box.xyz · 300 K · 10 steps</p>')
             with gr.Column(scale=1):
                 t4b_btn = gr.Button(
                     "T4 — Plot NVT Trajectory",
@@ -680,6 +789,21 @@ with gr.Blocks(title="DynaMate2") as demo:
                 )
                 gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
                         'Energy & temperature from nvt_nacl_water.traj</p>')
+
+    # ── Section 5: Run Workflows ──────────────────────────────────────────────────
+    with gr.Accordion("⚡  Run Workflows", open=False, elem_id="acc-wf"):
+        gr.HTML(
+            '<p class="group-label">End-to-end autonomous workflows '
+            '— all tools must be registered before running</p>'
+        )
+        with gr.Row():
+            with gr.Column(scale=1):
+                wf_final_btn = gr.Button(
+                    "Full MD Workflow — Liquid Methanol",
+                    elem_classes=["btn-run"], size="sm",
+                )
+                gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
+                        'Download · SMILES→XYZ · pack box · NVT MD · plot · all from one prompt</p>')
 
     # ── Main layout ────────────────────────────────────────────────────────────────
     with gr.Row(equal_height=False):
@@ -712,14 +836,9 @@ with gr.Blocks(title="DynaMate2") as demo:
 
         # Right — status + session ─────────────────────────────────────────────────
         with gr.Column(scale=1, min_width=270):
-            gr.Markdown("### System Status")
-            status_box = gr.Textbox(
-                label="Agents & Tools",
-                value=_get_status_text,
-                interactive=False,
-                lines=16,
-                max_lines=40,
-                elem_classes=["monospace"],
+            status_box = gr.HTML(
+                value=_get_status_html,
+                elem_id="status-panel-wrap",
             )
             refresh_btn = gr.Button("↻  Refresh", size="sm")
 
@@ -753,7 +872,7 @@ with gr.Blocks(title="DynaMate2") as demo:
     ).then(fn=lambda: "", outputs=msg_box)
 
     # Refresh / new thread / history
-    refresh_btn.click(fn=_get_status_text, outputs=status_box)
+    refresh_btn.click(fn=_get_status_html, outputs=status_box)
 
     new_thread_btn.click(
         fn=do_new_thread,
@@ -777,15 +896,24 @@ with gr.Blocks(title="DynaMate2") as demo:
         outputs=[msg_box, upload_path_box, upload_preview_box],
     )
 
-    # Quick-start buttons → prefill msg_box
+    def _fill_run(prompt: str) -> tuple[str, str]:
+        """Fill msg_box + auto-generate a fresh thread_id for execution prompts.
+        Mirrors the notebook's fresh-thread approach for T3b and other Run steps."""
+        return prompt, _new_thread_id()
+
+    # Setup buttons — use the current session thread (build context in-place)
     t1a_btn.click(fn=lambda: PROMPT_T1A, outputs=msg_box)
     t1b_btn.click(fn=lambda: PROMPT_T1B, outputs=msg_box)
     t1c_btn.click(fn=lambda: PROMPT_T1C, outputs=msg_box)
-    t2_btn.click(fn=lambda:  PROMPT_T2,  outputs=msg_box)
     t3a_btn.click(fn=lambda: PROMPT_T3A, outputs=msg_box)
-    t3b_btn.click(fn=lambda: PROMPT_T3B, outputs=msg_box)
     t4a_btn.click(fn=lambda: PROMPT_T4A, outputs=msg_box)
-    t4b_btn.click(fn=lambda: PROMPT_T4B, outputs=msg_box)
+
+    # Execution buttons — always start a fresh thread (mirrors notebook Cell 35)
+    t1_run_btn.click(fn=lambda: _fill_run(PROMPT_T1_RUN), outputs=[msg_box, thread_box])
+    t2_btn.click(fn=lambda:     _fill_run(PROMPT_T2),     outputs=[msg_box, thread_box])
+    t3b_btn.click(fn=lambda:    _fill_run(PROMPT_T3B),    outputs=[msg_box, thread_box])
+    t4b_btn.click(fn=lambda:    _fill_run(PROMPT_T4B),    outputs=[msg_box, thread_box])
+    wf_final_btn.click(fn=lambda: _fill_run(PROMPT_WORKFLOW_FINAL), outputs=[msg_box, thread_box])
 
 # ── Entry point ───────────────────────────────────────────────────────────────────
 

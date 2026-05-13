@@ -1,0 +1,20 @@
+tolerance 2.5
+filetype xyz
+output /scratch365/omendibl/Molec_Mindset/DynaMate2_prod_2/tutorials/nacl_water_box.xyz
+seed 12345
+
+structure /scratch365/omendibl/Molec_Mindset/DynaMate2_prod_2/tutorials/water.xyz
+  number 267
+  inside box 0. 0. 0. 20.0 20.0 20.0
+end structure
+
+structure /scratch365/omendibl/Molec_Mindset/DynaMate2_prod_2/tutorials/na.xyz
+  number 1
+  inside box 0. 0. 0. 20.0 20.0 20.0
+end structure
+
+structure /scratch365/omendibl/Molec_Mindset/DynaMate2_prod_2/tutorials/cl.xyz
+  number 1
+  inside box 0. 0. 0. 20.0 20.0 20.0
+end structure
+
