@@ -404,7 +404,7 @@ def respond(message: str, history: list, thread_id: str):
         for chunk in pool.supervisor.stream(
             {"messages": [{"role": "user", "content": enhanced}]},
             config=config,
-            recursion_limit=25,
+            recursion_limit=50,
         ):
             node, content, is_ai = _parse_chunk(chunk)
             if node and content:

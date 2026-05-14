@@ -122,7 +122,7 @@ class PoolStore:
 
     def save_tool(self, name: str, source: str) -> None:
         """Write tool source to tools/<name>.py."""
-        with open(self.tool_path(name), "w") as f:
+        with open(self.tool_path(name), "w", encoding="utf-8") as f:
             f.write(source)
 
     def delete_tool(self, name: str) -> None:
@@ -137,7 +137,7 @@ class PoolStore:
         if os.path.isdir(self.tools_dir):
             for fname in sorted(os.listdir(self.tools_dir)):
                 if fname.endswith(".py"):
-                    with open(os.path.join(self.tools_dir, fname)) as f:
+                    with open(os.path.join(self.tools_dir, fname), encoding="utf-8") as f:
                         tools[fname[:-3]] = f.read()
         return tools
 

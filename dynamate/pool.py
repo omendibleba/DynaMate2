@@ -101,7 +101,7 @@ class AgentPool:
     def register_tool_from_file(self, file_path: str) -> str:
         """Load function definitions from a .py file into the global registry."""
         try:
-            with open(file_path) as f:
+            with open(file_path, encoding="utf-8") as f:
                 return self.register_tool_from_code(f.read())
         except FileNotFoundError:
             return f"File not found: {file_path}"
@@ -190,20 +190,23 @@ class AgentPool:
             "\nYou are a domain specialist. Your only job is to call your domain tools and return results."
             f"\nYour domain tools: {domain_tool_names}."
             "\n"
-            "\nREQUIRED three-step sequence — no exceptions:"
-            "\n  STEP 1 → Call the requested domain tool with the exact parameters from the user message."
-            "\n  STEP 2 → Observe the tool result."
-            "\n  STEP 3 → Call transfer_back_to_supervisor with the result. STOP — no further tool calls."
+            "\nSINGLE-TOOL REQUEST (message names one tool):"
+            "\n  STEP 1 → Call that domain tool with the exact parameters from the message."
+            "\n  STEP 2 → Observe the result."
+            "\n  STEP 3 → Call transfer_back_to_supervisor with the result. STOP."
+            "\n"
+            "\nMULTI-STEP REQUEST (message lists tools separated by 'then'):"
+            "\n  Call each tool in the listed order, one at a time, observing each result before"
+            "\n  calling the next. After ALL listed tools have been called, call"
+            "\n  transfer_back_to_supervisor with a summary of all results. STOP."
             "\n"
             "\nCRITICAL RULES:"
-            "\n  - transfer_back_to_supervisor is FORBIDDEN as step 1. You MUST call a domain tool first."
+            "\n  - transfer_back_to_supervisor is FORBIDDEN until ALL required domain tools have been called."
+            "\n  - transfer_to_<agent> tools are NOT domain tools — NEVER call them mid-sequence."
             "\n  - Saying 'I will...' or 'I am going to...' is NOT calling a tool. Call the tool directly."
             "\n  - NEVER fabricate or assume a tool result — you must actually invoke the tool."
-            "\n  - NEVER ask for confirmation. Execute the tool immediately."
-            "\n  - If the message says 'MUST immediately call <tool_name>' or 'FIRST and ONLY action',"
-            "\n    call ONLY that one tool. Do not call any other domain tool before or after it."
-            "\n  - Once ANY domain tool returns a result for the current request, do NOT call any"
-            "\n    other domain tool — proceed directly and immediately to transfer_back_to_supervisor."
+            "\n  - NEVER ask for confirmation. Execute tools immediately."
+            "\n  - NEVER skip a tool listed in a multi-step sequence — call every one."
         )
 
         effective_prompt = base_sp + tool_section + execution_rule

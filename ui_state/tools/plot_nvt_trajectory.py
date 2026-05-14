@@ -10,6 +10,8 @@ def plot_nvt_trajectory(traj_file: str, output_png: str, timestep_fs: float = 0.
     str: The output PNG file path.
     """
     import ase.io
+    import matplotlib
+    matplotlib.use('Agg')  # thread-safe non-GUI backend; must precede pyplot import
     import matplotlib.pyplot as plt
     import numpy as np
 
