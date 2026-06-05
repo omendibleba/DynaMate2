@@ -1,0 +1,20 @@
+{
+  "tools": [
+    "download_mace_model",
+    "smiles_to_xyz",
+    "packmol_build_system"
+  ],
+  "dynamic_agents": {
+    "mace_md_specialist": {
+      "system_prompt": "You are an MACE MD specialist. Always call your tools immediately and return the complete numerical result. \nYour FIRST action must ALWAYS be to call one of your assigned tools.\nDo NOT call transfer_back_to_supervisor until AFTER a tool has returned a result.\nDo not ask for confirmation \u2014 call the tool immediately and return its output.",
+      "model_name": "gpt-4.1-mini"
+    }
+  },
+  "assignments": {
+    "mace_md_specialist": [
+      "download_mace_model",
+      "smiles_to_xyz",
+      "packmol_build_system"
+    ]
+  }
+}

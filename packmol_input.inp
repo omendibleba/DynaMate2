@@ -1,0 +1,10 @@
+tolerance 2.5
+filetype xyz
+output /scratch365/omendibl/Molec_Mindset/DynaMate2_prod_2/tutorials/methanol_box.xyz
+seed 12345
+
+structure /scratch365/omendibl/Molec_Mindset/DynaMate2_prod_2/tutorials/methanol.xyz
+  number 50
+  inside box 0. 0. 0. 15.0 15.0 15.0
+end structure
+

@@ -1,0 +1,24 @@
+{
+  "tools": [
+    "download_mace_model",
+    "packmol_build_system",
+    "run_nvt_md",
+    "smiles_to_xyz",
+    "plot_nvt_trajectory"
+  ],
+  "dynamic_agents": {
+    "mace_md_specialist": {
+      "system_prompt": "You are a dedicated specialist in MACE machine learning potentials and molecular dynamics simulations. Always call your tools immediately and return the complete numerical result.\nYour FIRST action must ALWAYS be to call one of your assigned tools.\nDo NOT call transfer_back_to_supervisor until AFTER a tool has returned a result.\nIf all the needed data is available call the tool immediately and do not ask for confirmation. Excecuthe the tool suggested in the prompt.",
+      "model_name": "gpt-4.1-mini"
+    }
+  },
+  "assignments": {
+    "mace_md_specialist": [
+      "download_mace_model",
+      "smiles_to_xyz",
+      "packmol_build_system",
+      "run_nvt_md",
+      "plot_nvt_trajectory"
+    ]
+  }
+}
