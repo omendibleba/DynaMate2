@@ -1,7 +1,6 @@
 /.env
 /.dynamate
 /.claude
-dynamate/__pycache__
 README_ycolon.md
 tutorials/paper_tests_plan.md
 tutorials/paper_tests.ipynb
