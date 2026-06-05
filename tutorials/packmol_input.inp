@@ -1,10 +1,10 @@
 tolerance 2.5
 filetype xyz
-output /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/nvt_nacl_water.traj
+output /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/dmf_30_box.xyz
 seed 12345
 
-structure /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/nacl_water_box.xyz
+structure /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/dmf_30.xyz
   number 1
-  inside box 0. 0. 0. 20.0 20.0 20.0
+  inside box 0. 0. 0. 15.7 15.7 15.7
 end structure
 
