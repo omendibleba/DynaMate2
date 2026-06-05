@@ -119,7 +119,7 @@ if __name__ == "__main__":
     print()
 
     result = run_nvt_md(
-        model_path=MODEL_PATH,
+        model_paths=MODEL_PATH,
         structure_file=STRUCTURE_FILE,
         box_size=BOX_SIZE,
         temperature_K=TEMPERATURE_K,

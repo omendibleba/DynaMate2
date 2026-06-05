@@ -7,7 +7,7 @@ def run_nvt_md(
     output_traj: str = "nvt.traj",
     timestep_fs: float = 0.5,
     friction: float = 0.01,
-    traj_interval: int = 100,
+    traj_interval: int = 10,
     log_interval: int = 10,
     log_file: str = "nvt.log",
     device: str = "cuda",
