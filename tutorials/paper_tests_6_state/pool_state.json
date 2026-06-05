@@ -1,0 +1,9 @@
+{
+  "tools": [
+    "download_mace_model",
+    "smiles_to_xyz",
+    "packmol_build_system"
+  ],
+  "dynamic_agents": {},
+  "assignments": {}
+}

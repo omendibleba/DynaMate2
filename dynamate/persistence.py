@@ -27,6 +27,7 @@ Restoration sequence (handled by build_system in main.py)
      agents, re-applies assignments from the JSON store.
 """
 
+import ast
 import json
 import os
 import sqlite3
@@ -35,6 +36,27 @@ import textwrap
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from .pool import AgentPoolWithSupervisor
+
+
+def _extract_function_sources(code: str) -> dict:
+    """Return {func_name: source_str} for every top-level function in *code*.
+
+    Uses the AST to locate each function's exact line range so that
+    multi-function code blocks are split into individual .py files rather than
+    saving the full combined source for every registered tool.
+    """
+    sources = {}
+    lines = code.splitlines(keepends=True)
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return sources
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            start = node.lineno - 1          # ast lines are 1-indexed
+            end   = node.end_lineno          # end_lineno is inclusive
+            sources[node.name] = "".join(lines[start:end])
+    return sources
 
 
 # ── Conversation-history persistence ──────────────────────────────────────────
@@ -184,17 +206,18 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
 
     def register_tool_from_code(self, code: str) -> str:
         result = super().register_tool_from_code(code)
-        # Track source code for each newly registered tool and write .py file
+        # Track source code for each newly registered tool and write .py file.
+        # Extract each function's own source so that smiles_to_xyz.py and
+        # packmol_build_system.py each get only their own definition, not the
+        # full combined code string.
         if "Registered:" in result:
-            namespace: dict = {}
-            try:
-                exec(textwrap.dedent(code), namespace)
-                for name, obj in namespace.items():
-                    if callable(obj) and not name.startswith("_") and name in self._tool_registry:
-                        self._source_registry[name] = textwrap.dedent(code)
-                        self._pool_store.save_tool(name, self._source_registry[name])
-            except Exception:
-                pass
+            dedented = textwrap.dedent(code)
+            func_sources = _extract_function_sources(dedented)
+            for name in self._tool_registry:
+                if name not in self._source_registry:
+                    src = func_sources.get(name, dedented)
+                    self._source_registry[name] = src
+                    self._pool_store.save_tool(name, src)
         if not self._loading:
             self._autosave()
         return result

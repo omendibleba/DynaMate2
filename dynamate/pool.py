@@ -12,6 +12,7 @@ Rebuild cost summary
   pool.supervisor        → property; always returns the current compiled graph
 """
 
+import inspect
 import textwrap
 
 from langchain.tools import tool
@@ -77,7 +78,17 @@ class AgentPool:
 
         added, skipped = [], []
         for name, obj in namespace.items():
-            if not callable(obj) or name.startswith("_"):
+            if name.startswith("_"):
+                continue
+            # Only register plain functions defined in the exec'd code, not
+            # imported callables (classes, imported functions, modules, etc.).
+            # Functions defined by exec() have __module__ == None because the
+            # namespace dict has no __name__ key.
+            if not inspect.isfunction(obj) or obj.__module__ is not None:
+                continue
+            # Require a docstring — stubs the LLM invents have no docstring,
+            # and an empty description makes the tool invisible to routing.
+            if not (obj.__doc__ or "").strip():
                 continue
             if name in self._tool_registry:
                 skipped.append(name)

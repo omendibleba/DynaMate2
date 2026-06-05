@@ -90,9 +90,27 @@ class PromptEnhancer:
 
         If the pool has no agents yet, *user_input* is returned unchanged
         (avoids a wasted API call with uninformative context).
+
+        When the message contains Python function definitions, the code is
+        pre-extracted here and injected verbatim into the enhanced message so
+        that tool_manager receives the exact argument to pass to
+        register_tool_from_code — no LLM copying required.
         """
         if not self._pool.list_agents():
             return user_input
+
+        _has_def = re.compile(r"^\s*def \w+\s*\(", re.MULTILINE)
+
+        # Pre-extract code so tool_manager never has to guess what to register.
+        if _has_def.search(user_input):
+            extracted = self._extract_code(user_input)
+            if extracted:
+                return (
+                    f"{user_input.strip()}\n\n"
+                    f"Use tool_manager — call register_tool_from_code with "
+                    f"the following code exactly as shown (do not modify it):\n"
+                    f"```python\n{extracted}\n```"
+                )
 
         pool_context = self._build_pool_context()
         system_content = _ENHANCER_SYSTEM_PROMPT.format(pool_context=pool_context)
@@ -103,6 +121,15 @@ class PromptEnhancer:
         response = self._model.invoke(messages)
         enhanced = response.content.strip()
         return enhanced if enhanced else user_input
+
+    def _extract_code(self, user_input: str) -> str:
+        """Extract all Python function definitions from *user_input* via LLM."""
+        response = self._model.invoke([
+            SystemMessage(content=_EXTRACT_SYSTEM),
+            HumanMessage(content=user_input),
+        ])
+        code = response.content.strip()
+        return "" if (not code or code.upper() == "NONE") else code
 
     def _build_pool_context(self) -> str:
         agents = self._pool.list_agents()
