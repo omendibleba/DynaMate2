@@ -36,7 +36,11 @@ If the user's intent is to register or load tools/functions FROM A FILE \
 (message mentions a file path ending in .py, or phrases like \
 "register from file", "load from file", "tools in the file"):
   → Route EXCLUSIVELY to tool_manager.
-  → tool_manager must call register_tool_from_file with the file path.
+  → tool_manager must FIRST call register_tool_from_file with the file path.
+  → If the user also asks to assign a tool to an agent (phrases like \
+"assign <tool> to <agent>", "then assign", "and assign"), tool_manager must \
+THEN call assign_tool_to_agent(tool_name=<tool_name>, agent_name=<agent_name>) \
+immediately after registration — do NOT wait for the supervisor to chain it.
   → Do NOT use register_tool_from_code for file-based registration.
 
 PRIORITY RULE B — register from code (apply second):
@@ -51,11 +55,18 @@ function code as the argument.
 
 Rules:
 1. Keep the original question intact — do not paraphrase or summarise it.
-2. Read the tool descriptions in the pool state below and select ONLY the \
-tool(s) whose description directly matches what the user is asking for. \
-Do NOT list all tools an agent has — pick the minimum set needed.
-   Append: "Use <agent_name> — it should use <tool_name> to complete the request."
-3. If the task requires a strict sequence of tools, chain them explicitly:
+2. Match the user's core request to the ONE tool whose description most \
+directly fulfils it. A request to "run a simulation" maps to the \
+simulation/MD tool only — NOT to file-preparation tools (box builders, \
+model downloaders) even if those tools belong to the same agent. Only \
+add a second tool if the user explicitly asks to "build", "download", \
+or "prepare" something not already provided as a file path.
+   Append: "Use <agent_name> — it should use <tool_name> to complete the request. \
+All required input files are already present at the provided paths. \
+Call <tool_name> directly without any preliminary file-preparation steps \
+(no packmol_build_system, no download_mace_model, no smiles_to_xyz)."
+3. If the user explicitly requests a multi-step sequence (e.g. "build a \
+box AND run a simulation"), chain them:
    "First use <agent_A> with <tool_X>, then <tool_Y>."
 4. If no tool description matches the user's request, return the original \
 query unchanged (no routing instruction).

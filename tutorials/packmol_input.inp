@@ -1,10 +1,15 @@
 tolerance 2.5
 filetype xyz
-output /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/dmf_30_box.xyz
+output /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/end_to_end_test/nacl_water_box.xyz
 seed 12345
 
-structure /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/dmf_30.xyz
+structure /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/end_to_end_test/water.xyz
+  number 267
+  inside box 0. 0. 0. 20.0 20.0 20.0
+end structure
+
+structure /groups/ycolon/Orlando/scratch365/Molec_Mindset/DynaMate2_prod/tutorials/end_to_end_test/nacl.xyz
   number 1
-  inside box 0. 0. 0. 15.7 15.7 15.7
+  inside box 0. 0. 0. 20.0 20.0 20.0
 end structure
 

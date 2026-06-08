@@ -13,7 +13,7 @@ def run_nvt_md(
     device: str = "cuda",
 ) -> str:
     """
-    Run an NVT Langevin MD simulation with PBC using a MACE calculator.
+    Run an NVT molecular dynamics simulation using the Langevin thermostat using a MACE calculator.
 
     Parameters
     ----------
