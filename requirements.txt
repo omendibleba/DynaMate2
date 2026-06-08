@@ -1,0 +1,33 @@
+# DynaMate2 — pip requirements (for non-conda users)
+#
+# Install:
+#   pip install -r requirements.txt
+#
+# Note: mace-torch pulls in PyTorch. For CUDA support install the matching torch
+# version first: https://pytorch.org/get-started/locally/
+#
+# External binary required: PACKMOL — not pip-installable.
+# See: http://leandro.iqm.unicamp.br/m3g/packmol/home.shtml
+
+# LLM orchestration
+langchain>=0.3.23
+langchain-openai>=0.3.12
+langchain-community>=0.3.16
+langgraph>=0.6.7
+langgraph-supervisor>=0.0.29
+langgraph-checkpoint-sqlite>=3.0.3
+python-dotenv>=1.0.0
+
+# Web UI
+gradio>=6.11.0
+
+# Molecular simulation
+ase>=3.26.0
+mace-torch>=0.3.16
+rdkit>=2024.9.6
+numpy>=1.25.0
+matplotlib>=3.8.0
+
+# Notebook
+jupyter
+ipykernel

@@ -1,0 +1,43 @@
+# DynaMate2 — recommended conda environment (top-level packages)
+#
+# Install:
+#   conda env create -f environment.yml
+#   conda activate dynamate
+#
+# For exact version pinning (maximum reproducibility), use environment_pinned.yml instead.
+#
+# External requirement (not pip-installable):
+#   PACKMOL binary — required by the packmol_build_system tool.
+#   Install from: http://leandro.iqm.unicamp.br/m3g/packmol/home.shtml
+#   or via conda:  conda install -c conda-forge packmol
+#
+# GPU note: MACE simulations require a CUDA-capable GPU.
+# mace-torch installs PyTorch as a dependency; CUDA toolkit must match your driver.
+
+name: dynamate
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+    # LLM orchestration stack
+    - langchain>=0.3
+    - langchain-openai>=0.3
+    - langchain-community>=0.3
+    - langgraph>=0.6
+    - langgraph-supervisor>=0.0.29
+    - langgraph-checkpoint-sqlite>=3.0
+    - python-dotenv>=1.0
+    # Web UI
+    - gradio>=6.0
+    # Molecular simulation
+    - ase>=3.26
+    - mace-torch>=0.3        # also installs PyTorch; choose a CUDA-compatible version
+    - rdkit>=2024.9
+    - numpy>=1.25
+    - matplotlib>=3.8
+    # Notebook
+    - jupyter
+    - ipykernel
