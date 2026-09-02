@@ -23,7 +23,7 @@ from dynamate import (
 )
 
 from backend import state
-from backend.routes import chat, health, status, threads
+from backend.routes import chat, health, quickstart, status, threads, tools
 
 dotenv.load_dotenv()
 
@@ -105,3 +105,5 @@ app.include_router(health.router, prefix="/api")
 app.include_router(status.router, prefix="/api")
 app.include_router(threads.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(quickstart.router, prefix="/api")
+app.include_router(tools.router, prefix="/api")

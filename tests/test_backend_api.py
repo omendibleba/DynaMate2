@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """
 Test: FastAPI backend — non-streaming endpoints (Phase 1) + streaming chat (Phase 2)
+      + quick-start prompts / file upload (Phase 4)
 ─────────────────────────────────────────────────────────────────────────────────────
 Verifies /api/health, /api/status, /api/threads (no LLM calls — pool
-construction, restore_state(), response shapes only) and /api/chat/stream
-(real LLM call, matching this repo's no-mocking test convention).
+construction, restore_state(), response shapes only), /api/chat/stream
+(real LLM call, matching this repo's no-mocking test convention),
+/api/quickstart/prompts (byte-for-byte against the original app.py
+PROMPT_T1A..T4B strings), and /api/tools/upload (round-trip).
 
 Run:
     pytest tests/test_backend_api.py -v
 """
 
 import json
-import sys, os
+import os
+import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import dotenv
@@ -21,6 +25,8 @@ import pytest
 from starlette.testclient import TestClient
 
 from backend.main import app
+from backend.quickstart import PROMPTS
+from backend.state import UPLOADS_DIR
 
 
 @pytest.fixture(scope="module")
@@ -102,3 +108,51 @@ def test_chat_stream_incremental(client):
     assert len(final_events) == 1
     assert final_events[0]["answer"].strip()
     assert not any(etype == "error" for etype, _ in events)
+
+
+def test_quickstart_prompts_match_source(client):
+    """
+    The API's quickstart prompts must be byte-identical to backend.quickstart's
+    PROMPTS dict (which is itself a verbatim port of app.py's PROMPT_T1A..T4B
+    construction) — this is a regression guard against the two drifting apart.
+    """
+    resp = client.get("/api/quickstart/prompts")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body == PROMPTS
+    # sanity: T1a must actually embed the download_mace_model source, T2 must
+    # reference the tutorials/ directory for its file paths.
+    assert "def download_mace_model" in body["t1a"]
+    assert "nacl_water_box.xyz" in body["t2"]
+
+
+def test_tool_upload_roundtrip(client, tmp_path):
+    src = tmp_path / "my_tool.py"
+    src.write_text(
+        "def my_test_tool(x: float) -> str:\n"
+        '    """A test tool for the upload round-trip test."""\n'
+        "    return str(x)\n"
+    )
+
+    with open(src, "rb") as f:
+        resp = client.post(
+            "/api/tools/upload",
+            files={"file": ("my_tool.py", f, "text/x-python")},
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    expected_path = os.path.join(UPLOADS_DIR, "my_tool.py")
+    assert body["path"] == expected_path
+    assert expected_path in body["prompt"]
+    assert os.path.exists(expected_path)
+    with open(expected_path) as f:
+        assert "def my_test_tool" in f.read()
+    os.remove(expected_path)
+
+
+def test_tool_upload_rejects_non_python(client):
+    resp = client.post(
+        "/api/tools/upload",
+        files={"file": ("not_a_tool.txt", b"hello", "text/plain")},
+    )
+    assert resp.status_code == 400
