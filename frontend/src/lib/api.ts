@@ -18,6 +18,22 @@ export interface ThreadInfo {
   created_at: string
 }
 
+export interface QuickstartPrompts {
+  t1a: string
+  t1b: string
+  t1c: string
+  t2: string
+  t3a: string
+  t3b: string
+  t4a: string
+  t4b: string
+}
+
+export interface UploadResponse {
+  path: string
+  prompt: string
+}
+
 export type ChatStreamEvent =
   | { type: 'trace'; node: string; content: string; is_ai: boolean }
   | { type: 'final'; answer: string }
@@ -42,6 +58,21 @@ export async function createThread(): Promise<string> {
   if (!resp.ok) throw new Error(`POST /api/threads -> ${resp.status}`)
   const body = (await resp.json()) as { id: string }
   return body.id
+}
+
+export function getQuickstartPrompts(): Promise<QuickstartPrompts> {
+  return getJSON<QuickstartPrompts>('/api/quickstart/prompts')
+}
+
+export async function uploadTool(file: File): Promise<UploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const resp = await fetch('/api/tools/upload', { method: 'POST', body: formData })
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({ detail: resp.statusText }))
+    throw new Error(body.detail ?? `POST /api/tools/upload -> ${resp.status}`)
+  }
+  return resp.json() as Promise<UploadResponse>
 }
 
 /**
