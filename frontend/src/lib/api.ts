@@ -101,26 +101,41 @@ export async function* streamChat(
   const decoder = new TextDecoder()
   let buffer = ''
 
+  function parseFrame(frame: string): ChatStreamEvent | null {
+    let eventType = 'message'
+    let data = ''
+    for (const line of frame.split('\n')) {
+      if (line.startsWith('event:')) eventType = line.slice(6).trim()
+      else if (line.startsWith('data:')) data = line.slice(5).trim()
+    }
+    if (!data) return null
+    return { type: eventType, ...JSON.parse(data) } as ChatStreamEvent
+  }
+
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
-    buffer += decoder.decode(value, { stream: true })
+    // Normalize line endings: some proxies/relays (e.g. tunnel HTTP relays)
+    // rewrite \n to \r\n in transit, which would otherwise silently break
+    // the \n\n frame-boundary search below.
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n')
 
     // SSE frames are separated by a blank line.
     let sep: number
     while ((sep = buffer.indexOf('\n\n')) !== -1) {
       const frame = buffer.slice(0, sep)
       buffer = buffer.slice(sep + 2)
-
-      let eventType = 'message'
-      let data = ''
-      for (const line of frame.split('\n')) {
-        if (line.startsWith('event:')) eventType = line.slice(6).trim()
-        else if (line.startsWith('data:')) data = line.slice(5).trim()
-      }
-      if (!data) continue
-      const parsed = JSON.parse(data)
-      yield { type: eventType, ...parsed } as ChatStreamEvent
+      const event = parseFrame(frame)
+      if (event) yield event
     }
+  }
+
+  // Defensive: process a final frame even if the stream ended without a
+  // trailing blank line (shouldn't happen with a well-behaved SSE server,
+  // but a lossy intermediary could still truncate the last separator).
+  const remaining = buffer.trim()
+  if (remaining) {
+    const event = parseFrame(remaining)
+    if (event) yield event
   }
 }
