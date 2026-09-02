@@ -24,6 +24,7 @@ dotenv.load_dotenv()
 import pytest
 from starlette.testclient import TestClient
 
+from backend import state
 from backend.main import app
 from backend.quickstart import PROMPTS
 from backend.state import UPLOADS_DIR
@@ -108,6 +109,44 @@ def test_chat_stream_incremental(client):
     assert len(final_events) == 1
     assert final_events[0]["answer"].strip()
     assert not any(etype == "error" for etype, _ in events)
+
+
+def test_chat_stream_post_loop_failure_surfaces_as_error_event(client, monkeypatch):
+    """
+    Regression test: state.save_thread() (and the final answer bookkeeping
+    around it) used to sit outside the try/except guarding the SSE
+    generator, so a failure there silently killed the stream with no
+    'error' event ever reaching the client. Simulates that failure and
+    asserts it now surfaces as a proper 'error' event instead.
+    """
+    def _boom(*_args, **_kwargs):
+        raise OSError("simulated disk failure writing threads.json")
+
+    monkeypatch.setattr(state, "save_thread", _boom)
+
+    events = []
+    with client.stream(
+        "POST",
+        "/api/chat/stream",
+        json={
+            "thread_id": "test-phase2-error-path",
+            "message": "What capabilities have been added to the system so far?",
+        },
+        timeout=90,
+    ) as resp:
+        assert resp.status_code == 200
+        event_type = None
+        for line in resp.iter_lines():
+            if line.startswith("event:"):
+                event_type = line.split(":", 1)[1].strip()
+            elif line.startswith("data:") and event_type:
+                events.append((event_type, json.loads(line.split(":", 1)[1].strip())))
+                event_type = None
+
+    error_events = [d for etype, d in events if etype == "error"]
+    assert len(error_events) == 1
+    assert "simulated disk failure" in error_events[0]["message"]
+    assert not any(etype == "final" for etype, _ in events)
 
 
 def test_quickstart_prompts_match_source(client):

@@ -4,6 +4,9 @@ import type { ChatMessage } from '../hooks/useChatStream'
 interface ChatPanelProps {
   messages: ChatMessage[]
   isStreaming: boolean
+  /** True while there's no usable session to send into yet (e.g. the
+   *  initial thread hasn't been created, or creating it failed). */
+  disabled?: boolean
   error: string | null
   onSend: (message: string) => void
   inputValue: string
@@ -13,12 +16,14 @@ interface ChatPanelProps {
 export function ChatPanel({
   messages,
   isStreaming,
+  disabled = false,
   error,
   onSend,
   inputValue,
   onInputChange,
 }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const canSubmit = !isStreaming && !disabled
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -26,7 +31,7 @@ export function ChatPanel({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!inputValue.trim() || isStreaming) return
+    if (!inputValue.trim() || !canSubmit) return
     onSend(inputValue)
     onInputChange('')
   }
@@ -75,13 +80,17 @@ export function ChatPanel({
               handleSubmit(e)
             }
           }}
-          placeholder="Describe your task, or click a step above to auto-fill…"
+          placeholder={
+            disabled
+              ? 'Starting a session…'
+              : 'Describe your task, or click a step above to auto-fill…'
+          }
           rows={2}
           className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
         <button
           type="submit"
-          disabled={isStreaming}
+          disabled={!canSubmit}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Send

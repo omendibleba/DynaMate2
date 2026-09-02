@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AgentTracePanel } from './components/AgentTracePanel'
 import { ChatPanel } from './components/ChatPanel'
 import { QuickStartPanel } from './components/QuickStartPanel'
@@ -10,17 +10,36 @@ import { createThread } from './lib/api'
 
 function App() {
   const [threadId, setThreadId] = useState<string | null>(null)
+  const [threadInitError, setThreadInitError] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState('')
   const queryClient = useQueryClient()
 
-  useEffect(() => {
-    createThread().then(setThreadId)
+  const initThread = useCallback(() => {
+    createThread()
+      .then((id) => {
+        setThreadId(id)
+        setThreadInitError(null)
+      })
+      .catch((err) => setThreadInitError(err instanceof Error ? err.message : String(err)))
   }, [])
 
-  const { messages, trace, isStreaming, error, send, reset } = useChatStream(threadId ?? '', () => {
-    queryClient.invalidateQueries({ queryKey: ['status'] })
-    queryClient.invalidateQueries({ queryKey: ['threads'] })
-  })
+  useEffect(() => {
+    initThread()
+  }, [initThread])
+
+  function handleRetryThread() {
+    setThreadInitError(null)
+    initThread()
+  }
+
+  const { messages, trace, isStreaming, error, send, reset } = useChatStream(
+    threadId ?? '',
+    () => {
+      queryClient.invalidateQueries({ queryKey: ['status'] })
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+    },
+    () => queryClient.invalidateQueries({ queryKey: ['status'] }),
+  )
 
   function handleNewThread(id: string) {
     setThreadId(id)
@@ -57,12 +76,25 @@ function App() {
 
       <QuickStartPanel onSelectPrompt={setInputValue} />
 
+      {threadInitError && (
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <span>⚠ Couldn't start a session: {threadInitError}</span>
+          <button
+            onClick={handleRetryThread}
+            className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-4">
         <div className="flex flex-col gap-4 overflow-hidden md:col-span-3">
           <div className="flex-1 overflow-hidden">
             <ChatPanel
               messages={messages}
               isStreaming={isStreaming}
+              disabled={!threadId}
               error={error}
               onSend={send}
               inputValue={inputValue}

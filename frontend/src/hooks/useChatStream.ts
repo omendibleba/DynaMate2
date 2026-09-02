@@ -12,7 +12,7 @@ export interface TraceEntry {
   isAi: boolean
 }
 
-export function useChatStream(threadId: string, onSent?: () => void) {
+export function useChatStream(threadId: string, onSent?: () => void, onTrace?: () => void) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [trace, setTrace] = useState<TraceEntry[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
@@ -36,6 +36,11 @@ export function useChatStream(threadId: string, onSent?: () => void) {
         for await (const event of streamChat(threadId, message, controller.signal)) {
           if (event.type === 'trace') {
             setTrace((prev) => [...prev, { node: event.node, content: event.content, isAi: event.is_ai }])
+            // Mirrors app.py's respond(), which recomputed and yielded the
+            // status text on every streamed chunk — keeps the Agents & Tools
+            // sidebar live during multi-step turns (tool/agent registration)
+            // instead of only refreshing once the whole turn finishes.
+            onTrace?.()
           } else if (event.type === 'final') {
             finalAnswer = event.answer
           } else if (event.type === 'error') {
@@ -55,7 +60,7 @@ export function useChatStream(threadId: string, onSent?: () => void) {
         onSent?.()
       }
     },
-    [threadId, isStreaming, onSent],
+    [threadId, isStreaming, onSent, onTrace],
   )
 
   const reset = useCallback(() => {

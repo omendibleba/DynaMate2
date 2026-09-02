@@ -37,17 +37,19 @@ async def chat_stream(req: ChatRequest, pool=Depends(get_pool), enhancer=Depends
             return
 
         async with _run_lock:
+            # Everything below shares one handler: an error at any point
+            # (enhance, the stream loop, or the save_thread/final bookkeeping
+            # after it) must surface as an "error" SSE event rather than just
+            # killing the generator — sse-starlette has no try/except of its
+            # own around iterating this generator, so an uncaught exception
+            # here ends the HTTP response with no event ever reaching the
+            # client.
             try:
                 enhanced = await asyncio.to_thread(enhancer.enhance, req.message)
-            except Exception as exc:
-                yield _sse("error", message=str(exc))
-                return
+                yield _sse("trace", node="enhancer", content=enhanced, is_ai=False)
 
-            yield _sse("trace", node="enhancer", content=enhanced, is_ai=False)
-
-            config = {"configurable": {"thread_id": req.thread_id}}
-            final_answer = ""
-            try:
+                config = {"configurable": {"thread_id": req.thread_id}}
+                final_answer = ""
                 it = pool.supervisor.stream(
                     {"messages": [{"role": "user", "content": enhanced}]},
                     config=config,
@@ -62,12 +64,11 @@ async def chat_stream(req: ChatRequest, pool=Depends(get_pool), enhancer=Depends
                         yield _sse("trace", node=node, content=content[:300], is_ai=is_ai)
                         if is_ai:
                             final_answer = content
+
+                final_answer = final_answer or "(No response)"
+                state.save_thread(req.thread_id, req.message[:60])
+                yield _sse("final", answer=final_answer)
             except Exception as exc:
                 yield _sse("error", message=str(exc))
-                return
-
-            final_answer = final_answer or "(No response)"
-            state.save_thread(req.thread_id, req.message[:60])
-            yield _sse("final", answer=final_answer)
 
     return EventSourceResponse(event_generator())
