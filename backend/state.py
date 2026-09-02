@@ -10,11 +10,11 @@ import json
 import os
 from datetime import datetime
 
-_ROOT       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATE_DIR   = os.path.join(_ROOT, "ui_state")
+ROOT        = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATE_DIR   = os.path.join(ROOT, "ui_state")
 UPLOADS_DIR = os.path.join(STATE_DIR, "uploads")
 THREADS_DB  = os.path.join(STATE_DIR, "threads.json")
-TUTORIALS_DIR = os.path.join(_ROOT, "tutorials")
+TUTORIALS_DIR = os.path.join(ROOT, "tutorials")
 MODEL_NAME  = os.getenv("DYNAMATE_MODEL", "gpt-4o-mini")
 
 

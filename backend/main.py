@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 
 import dotenv
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from langchain_community.tools import ShellTool
 from langchain_openai import ChatOpenAI
 
@@ -107,3 +108,12 @@ app.include_router(threads.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(quickstart.router, prefix="/api")
 app.include_router(tools.router, prefix="/api")
+
+# ── Production static frontend ─────────────────────────────────────────────────
+# Mounted last (after every /api/* router) so API routes always take
+# precedence over the catch-all. Only present once `npm run build` has been
+# run in frontend/ — absent in dev (Vite's own dev server serves the UI then)
+# and in tests, so this is skipped rather than erroring when dist/ is missing.
+_FRONTEND_DIST = os.path.join(state.ROOT, "frontend", "dist")
+if os.path.isdir(_FRONTEND_DIST):
+    app.mount("/", StaticFiles(directory=_FRONTEND_DIST, html=True), name="frontend")
