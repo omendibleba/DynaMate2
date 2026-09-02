@@ -17,7 +17,8 @@ Originally developed as a research framework for molecular simulation workflows 
 - [Tutorial](#tutorial)
 - [Usage](#usage)
   - [Interactive CLI](#interactive-cli)
-  - [Gradio Web UI](#gradio-web-ui)
+  - [Web UI (React)](#web-ui-react)
+  - [Gradio Web UI (legacy)](#gradio-web-ui-legacy)
   - [Single Prompt](#single-prompt)
   - [Using as a Python Library](#using-as-a-python-library)
 - [How Persistence Works](#how-persistence-works)
@@ -75,12 +76,27 @@ Supervisor                    ← routes tasks to the right agent
 ```
 DynaMate2/
 ├── main.py                        # CLI entry point
-├── app.py                         # Gradio web UI
+├── server.py                      # React UI production entry point
+├── app.py                         # Gradio web UI (legacy — gradio-ui-legacy branch)
 ├── .env                           # OPENAI_API_KEY (not committed)
 ├── .env_sample                    # Template for .env
 ├── environment.yml                # Recommended conda environment
 ├── environment_pinned.yml         # Fully-pinned conda environment
 ├── requirements.txt               # pip requirements
+│
+├── backend/                       # FastAPI backend for the React UI
+│   ├── main.py                    # App + lifespan (builds the pool once at startup)
+│   ├── routes/                    # health, status, threads, chat, quickstart, tools
+│   ├── state.py                   # ui_state/ paths, thread-index helpers
+│   ├── streaming.py               # SSE bridge for pool.supervisor.stream()
+│   ├── quickstart.py              # Tutorial-mirroring prompt strings
+│   └── schemas.py                 # Pydantic request/response models
+│
+├── frontend/                      # React + TypeScript + Tailwind UI (Vite)
+│   └── src/
+│       ├── components/            # ChatPanel, QuickStartPanel, StatusSidebar, …
+│       ├── hooks/useChatStream.ts # Drives one chat turn (SSE)
+│       └── lib/api.ts             # Typed backend client
 │
 ├── dynamate/                      # Core package
 │   ├── __init__.py                # Public exports
@@ -103,7 +119,7 @@ DynaMate2/
 ├── misc/
 │   └── show_graph.py              # Pool inspector + Mermaid / PNG output
 │
-├── ui_state/                      # Auto-created: Gradio UI persistent state
+├── ui_state/                      # Auto-created: web UI persistent state (shared by both UIs)
 │   ├── pool_state.json
 │   ├── conversations.db
 │   └── tools/
@@ -245,13 +261,43 @@ Type 'status' to inspect the pool, 'exit' to quit.
 >>>
 ```
 
-### Gradio Web UI
+### Web UI (React)
 
+The current web UI — a FastAPI backend (`backend/`) with a React + TypeScript +
+Tailwind frontend (`frontend/`), replacing the earlier Gradio UI per reviewer
+feedback. Same functionality as before (quick-start actions mirroring the
+tutorial notebook, streaming chat, tool upload, thread history, live agent/tool
+status) behind a more usable interface.
+
+**Production (single command):**
 ```bash
+cd frontend && npm install && npm run build && cd ..
+python server.py
+```
+Starts at `http://localhost:8888`. State is saved to `ui_state/` and restored
+between sessions, same as before.
+
+**Development (hot-reload on both sides):**
+```bash
+uvicorn backend.main:app --reload --port 8000      # terminal 1
+cd frontend && npm install && npm run dev            # terminal 2, proxies /api -> :8000
+```
+Open the Vite dev URL it prints (`http://localhost:5173`).
+
+Node.js is required for the frontend; if it isn't already on your `PATH`,
+`conda install -c conda-forge nodejs` into your environment.
+
+### Gradio Web UI (legacy)
+
+The original Gradio interface is preserved on the `gradio-ui-legacy` branch for
+anyone who prefers it:
+```bash
+git checkout gradio-ui-legacy
 python app.py
 ```
-
-The UI starts at `http://localhost:7860`. State is saved to `ui_state/` and restored between browser sessions.
+Starts at `http://localhost:8888`. Uses the same `ui_state/` as the React UI —
+switching between the two preserves your tools, agents, and conversation
+history.
 
 ### Single Prompt
 
