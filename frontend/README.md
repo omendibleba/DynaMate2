@@ -1,32 +1,44 @@
-# React + TypeScript + Vite
+# DynaMate2 frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript + Vite + Tailwind CSS UI for DynaMate2, talking to the FastAPI
+backend in `../backend/`.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+# from the frontend/ directory, with Node.js on PATH
+# (see /groups/ycolon/group-envs/agentic-tutorials — this repo's working environment)
+npm install       # first time only
+npm run dev       # Vite dev server on :5173, proxying /api -> localhost:8000
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Run the backend separately (see `../backend/main.py` / the repo root README) on port
+8000 — the Vite dev proxy (`vite.config.ts`) forwards `/api/*` requests to it so the
+browser sees everything as same-origin.
+
+## Production build
+
+```bash
+npm run build     # tsc -b && vite build -> dist/
+```
+
+`backend/main.py` serves `dist/` as static files once built, so `python server.py`
+from the repo root becomes the single-command entry point (matching the old
+`python app.py` Gradio UI, preserved on the `gradio-ui-legacy` branch).
+
+## Structure
+
+- `src/lib/api.ts` — typed client for the backend API, including the hand-rolled
+  SSE parser for the streaming chat endpoint (browser `EventSource` can't send a
+  POST body, so this uses `fetch` + `ReadableStream` instead).
+- `src/hooks/useChatStream.ts` — drives one chat turn end-to-end.
+- `src/components/` — `ChatPanel`, `QuickStartPanel` (mirrors the tutorial-notebook
+  quick-start prompts), `FileUploadZone`, `StatusSidebar`, `ThreadHistory`,
+  `AgentTracePanel`.
+
+## Checks
+
+```bash
+npm run build     # type-checks (tsc -b) and production-builds
+npm run lint       # oxlint
+```

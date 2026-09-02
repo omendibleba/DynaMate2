@@ -37,7 +37,22 @@ function App() {
     <div className="mx-auto flex h-screen max-w-6xl flex-col gap-4 p-4">
       <header className="rounded-xl bg-gradient-to-br from-slate-900 via-blue-950 to-cyan-900 px-6 py-5 text-white">
         <h1 className="text-2xl font-extrabold tracking-tight">⚗️ DynaMate2</h1>
-        <p className="text-sm text-cyan-200">Multi-Agent Molecular Simulation Assistant</p>
+        <p className="text-sm font-medium text-cyan-200">Multi-Agent Molecular Simulation Assistant</p>
+        <p className="mt-1 max-w-3xl text-sm text-cyan-300/80">
+          Describe your simulation task in plain language — DynaMate2 routes it through a pool
+          of specialist agents, registers tools on the fly, and returns full numerical results
+          without any scripting.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {['MACE-MP-0b3', 'ASE MD', 'Packmol', 'RDKit', 'LangGraph'].map((badge) => (
+            <span
+              key={badge}
+              className="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-xs text-cyan-100"
+            >
+              {badge}
+            </span>
+          ))}
+        </div>
       </header>
 
       <QuickStartPanel onSelectPrompt={setInputValue} />
