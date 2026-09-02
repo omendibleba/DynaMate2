@@ -30,8 +30,15 @@ dependencies:
     - langgraph-supervisor>=0.0.29
     - langgraph-checkpoint-sqlite>=3.0
     - python-dotenv>=1.0
-    # Web UI
+    # Web UI (legacy Gradio app, gradio-ui-legacy branch)
     - gradio>=6.0
+    # Web UI (FastAPI backend for the React UI, backend/)
+    - fastapi>=0.115
+    - uvicorn[standard]>=0.30
+    - sse-starlette>=2.1
+    - python-multipart>=0.0.9
+    - httpx>=0.27
+    - pytest>=8.0
     # Molecular simulation
     - ase>=3.26
     - mace-torch>=0.3        # also installs PyTorch; choose a CUDA-compatible version

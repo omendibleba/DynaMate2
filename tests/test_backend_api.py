@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Test: FastAPI backend — non-streaming endpoints (Phase 1)
-────────────────────────────────────────────────────────
-Verifies /api/health, /api/status, and /api/threads against the real
-ui_state/ (same state the Gradio UI reads/writes). No chat requests are
-made here, so no LLM calls happen — this only exercises pool construction,
-restore_state(), and response shapes.
+Test: FastAPI backend — non-streaming endpoints (Phase 1) + streaming chat (Phase 2)
+─────────────────────────────────────────────────────────────────────────────────────
+Verifies /api/health, /api/status, /api/threads (no LLM calls — pool
+construction, restore_state(), response shapes only) and /api/chat/stream
+(real LLM call, matching this repo's no-mocking test convention).
 
 Run:
     pytest tests/test_backend_api.py -v
 """
 
+import json
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -64,3 +64,41 @@ def test_create_and_list_threads(client):
     assert isinstance(threads, list)
     for t in threads:
         assert {"id", "preview", "created_at"} <= t.keys()
+
+
+def test_chat_stream_incremental(client):
+    """
+    Real LLM call (no mocking, matching this repo's existing test convention —
+    see tests/test_pipeline.py / tests/test_persistence.py). Verifies the SSE
+    stream delivers multiple frames incrementally, ending in a 'final' event
+    with a non-empty answer, without the request hanging or erroring.
+    """
+    events = []
+    with client.stream(
+        "POST",
+        "/api/chat/stream",
+        json={
+            "thread_id": "test-phase2-pytest",
+            "message": "What capabilities have been added to the system so far?",
+        },
+        timeout=90,
+    ) as resp:
+        assert resp.status_code == 200
+        event_type = None
+        for line in resp.iter_lines():
+            if line.startswith("event:"):
+                event_type = line.split(":", 1)[1].strip()
+            elif line.startswith("data:") and event_type:
+                events.append((event_type, json.loads(line.split(":", 1)[1].strip())))
+                event_type = None
+
+    assert len(events) >= 2, "expected at least an enhancer trace + a final event"
+    assert events[0] == ("trace", {
+        "node": "enhancer",
+        "content": "What capabilities have been added to the system so far?",
+        "is_ai": False,
+    })
+    final_events = [d for etype, d in events if etype == "final"]
+    assert len(final_events) == 1
+    assert final_events[0]["answer"].strip()
+    assert not any(etype == "error" for etype, _ in events)
