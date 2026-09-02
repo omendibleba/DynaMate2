@@ -37,3 +37,19 @@ tutorials/models/
 # ── Misc large files ──────────────────────────────────────────────────────────
 Dynamate1_paper.pdf
 DynaMate2-V3.0.docx
+
+# ── UI runtime state (Gradio + FastAPI backend) ───────────────────────────────
+# Session/conversation state, not source — regenerated per user. Tool source
+# files under ui_state/tools/*.py are intentionally still tracked.
+ui_state/conversations.db
+ui_state/conversations.db-shm
+ui_state/conversations.db-wal
+ui_state/pool_state.json
+ui_state/threads.json
+ui_state/uploads/
+ui_state/tools/__pycache__/
+
+# ── React frontend build artefacts ────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+backend/__pycache__/
