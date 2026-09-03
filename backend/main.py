@@ -48,7 +48,14 @@ _SUPERVISOR_PROMPT = (
     "  * If you have all you need execute tasks immediately.\n"
     "  * When a specialist agent completes a calculation, report the full numerical\n"
     "    result directly. Do not say 'the agent is ready' or ask what to do next.\n"
-    "  * Assign work to one agent at a time."
+    "  * Assign work to one agent at a time.\n"
+    "  * NEVER report a task as complete or successful unless you can see an actual\n"
+    "    result from a domain tool (real output, a file path it returned, computed\n"
+    "    values, etc.) in the conversation. A specialist agent transferring back to\n"
+    "    you is NOT by itself evidence anything was done — it can happen even when\n"
+    "    the specialist took no action at all. If you cannot find a genuine tool\n"
+    "    result, say plainly that the task was not completed and reassign it to the\n"
+    "    specialist again rather than reporting success."
 )
 
 

@@ -273,3 +273,84 @@ def test_enhancer_preserves_original_message_for_multistep_prompts(client):
             f"enhancer dropped {original_line!r} from the original message "
             f"— got: {enhanced!r}"
         )
+
+
+def test_assign_tool_after_agent_creation_updates_supervisor(tmp_path):
+    """
+    Regression test for the root cause behind every "specialist never
+    actually calls its tool" failure diagnosed today: AgentPoolWithSupervisor
+    overrides add_agent/remove_agent to rebuild the supervisor afterward, but
+    did NOT override assign_tool/remove_tool. Since restore_state() (and
+    tool_manager's assign_tool_to_agent) always create/have the agent BEFORE
+    assigning its tools, the supervisor's compiled graph kept routing to a
+    stale, tool-less copy of the agent for the rest of the process's life —
+    pool_state.json/the /api/status endpoint correctly showed the tool
+    assigned, but the specialist could never actually call it, so it just
+    bounced back to the supervisor and the supervisor fabricated a plausible
+    success message from nothing.
+
+    Directly mirrors the exact sequence that exposed this (add_agent with
+    zero tools, first supervisor build via set_system_agents, THEN
+    register+assign a tool) and verifies a message routed through the
+    supervisor actually reaches and executes the real tool function.
+    """
+    from langchain_openai import ChatOpenAI
+
+    from dynamate import AgentPoolWithSupervisor, build_tool_manager_v2
+
+    # A marker file, not a captured Python closure: register_tool_from_code
+    # exec()'s the source text in a fresh namespace, so a real closure over
+    # a local list would be silently lost — file I/O survives that round-trip
+    # the same way the real smiles_to_xyz/packmol_build_system tools do.
+    marker = tmp_path / "called.txt"
+    tool_source = f'''
+def record_call(value: str) -> str:
+    """Records that this tool was actually called; echoes the value back."""
+    with open("{marker}", "a") as f:
+        f.write(value + "\\n")
+    return f"recorded: {{value}}"
+'''
+
+    model = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+    pool = AgentPoolWithSupervisor(
+        supervisor_model=model,
+        supervisor_prompt=(
+            "You are the Supervisor. Any request mentioning 'echo_specialist' "
+            "or asking to record/echo a value must be routed to echo_specialist."
+        ),
+    )
+    # Agent created with NO tools yet, and the supervisor is first built
+    # (via set_system_agents) around it in that state — mirrors
+    # restore_state()'s exact sequence (add_agent, then assign_tool later).
+    pool.add_agent(
+        "echo_specialist",
+        model,
+        base_tools=[],
+        system_prompt=(
+            "You are echo_specialist. Your FIRST action must be to call "
+            "record_call with the value from the request. Never respond "
+            "with plain text first."
+        ),
+    )
+    tool_manager = build_tool_manager_v2(pool, model)
+    pool.set_system_agents([tool_manager])  # first supervisor build; echo_specialist has 0 tools here
+
+    # Tool registered and assigned AFTER the agent already exists in the
+    # compiled supervisor graph — this is the exact gap that caused the bug.
+    pool.register_tool_from_code(tool_source)
+    result = pool.assign_tool("record_call", "echo_specialist")
+    assert "Assigned" in result
+
+    config = {"configurable": {"thread_id": "test-supervisor-sync"}}
+    for _ in pool.supervisor.stream(
+        {"messages": [{"role": "user", "content": "echo_specialist: record_call with value 'hello-regression-test'"}]},
+        config=config,
+        recursion_limit=15,
+    ):
+        pass
+
+    assert marker.exists(), (
+        "echo_specialist never actually called record_call (stale supervisor "
+        "routing bug?) — no marker file was written"
+    )
+    assert marker.read_text().strip() == "hello-regression-test"

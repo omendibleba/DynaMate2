@@ -16,10 +16,44 @@ import inspect
 import textwrap
 
 from langchain.tools import tool
+from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph_supervisor import create_supervisor
+
+
+def _make_model_selector(base_model, domain_tools: list):
+    """
+    Build a state-aware model callable for create_react_agent.
+
+    Forces tool_choice="required" only on an agent's FIRST inference after
+    being activated by the supervisor — structurally preventing the model
+    from responding with plain text describing an action instead of taking
+    it (observed: "I will now call smiles_to_xyz... Executing now." with no
+    actual tool call, which LangGraph treats as a completed turn, causing an
+    unearned handoff back to the supervisor and a fabricated success
+    report). Reverts to normal tool_choice="auto" after any real tool call,
+    so the agent can still choose to stop on its own once genuine work is
+    done — avoiding a forced-tool-call loop.
+    """
+
+    def _select_model(state, runtime):
+        if not domain_tools:
+            return base_model
+
+        messages = state.get("messages") or []
+        last = messages[-1] if messages else None
+        is_first_turn = (
+            last is None
+            or isinstance(last, HumanMessage)
+            or (isinstance(last, ToolMessage) and (last.name or "").startswith("transfer_to_"))
+        )
+        if is_first_turn:
+            return base_model.bind_tools(domain_tools, tool_choice="required")
+        return base_model.bind_tools(domain_tools)
+
+    return _select_model
 
 
 class AgentPool:
@@ -201,6 +235,9 @@ class AgentPool:
             "\n  * You have been activated by the supervisor to perform a specific task."
             f"\n  * Your domain tools are: {domain_tool_names}."
             "\n  * Your FIRST action MUST be to call one of these domain tools — NEVER transfer_back_to_supervisor first."
+            "\n  * Do NOT write text saying you will call a tool or that you are executing it now."
+            "\n    Only the tool-call mechanism itself counts as calling a tool — a sentence describing"
+            "\n    the action is NOT the same as taking it, and produces no result at all."
             "\n  * If the message says 'it should use <tool_name>' or 'use <tool_name> to',"
             "\n    call that tool FIRST using the file paths from the"
             "\n    message directly as arguments. Do NOT call packmol_build_system,"
@@ -220,7 +257,7 @@ class AgentPool:
         effective_prompt = base_sp + tool_section + execution_rule
 
         entry["agent"] = create_react_agent(
-            entry["model"],
+            _make_model_selector(entry["model"], all_domain_tools),
             tools=entry["base_tools"] + entry["extra_tools"],
             name=name,
             prompt=effective_prompt,
@@ -289,6 +326,34 @@ class AgentPoolWithSupervisor(AgentPool):
         """Remove a domain agent and rebuild the supervisor."""
         result = super().remove_agent(agent_name)
         if "not found" not in result:
+            self._rebuild_supervisor()
+        return result
+
+    def assign_tool(self, tool_name: str, agent_name: str) -> str:
+        """
+        Assign a tool to an agent and rebuild the supervisor.
+
+        AgentPool.assign_tool() only rebuilds the target agent's own compiled
+        graph (a fresh object each time) — it does NOT update the supervisor,
+        whose compiled graph was wired to whatever agent object existed when
+        _rebuild_supervisor() last ran. Without this override, an agent that
+        already existed in the supervisor (e.g. one recreated by
+        restore_state(), which always adds the agent before assigning its
+        tools) permanently routes to a stale, tool-less copy of itself for
+        the rest of the process's life — the agent can never actually call
+        the tool, even though pool state/status correctly shows it assigned.
+        """
+        result = super().assign_tool(tool_name, agent_name)
+        if "Assigned" in result:
+            self._rebuild_supervisor()
+        return result
+
+    def remove_tool(self, tool_name: str) -> str:
+        """Remove a tool from the registry and rebuild the supervisor if any
+        agent currently in it was affected (see assign_tool for why this
+        override is required — remove_tool has the identical staleness gap)."""
+        result = super().remove_tool(tool_name)
+        if "Unassigned from and rebuilt" in result:
             self._rebuild_supervisor()
         return result
 
