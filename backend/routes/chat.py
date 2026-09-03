@@ -48,7 +48,21 @@ async def chat_stream(req: ChatRequest, pool=Depends(get_pool), enhancer=Depends
                 enhanced = await asyncio.to_thread(enhancer.enhance, req.message)
                 yield _sse("trace", node="enhancer", content=enhanced, is_ai=False)
 
-                config = {"configurable": {"thread_id": req.thread_id}}
+                config = {
+                    "configurable": {"thread_id": req.thread_id},
+                    # LangGraph's ToolNode runs multiple tool calls from a
+                    # single LLM turn in parallel via a ThreadPoolExecutor
+                    # (see langgraph.prebuilt.ToolNode._func). dynamate's
+                    # AgentPool mutates plain, non-thread-safe dicts
+                    # (_tool_registry, _agents) from inside tool calls like
+                    # register_tool_from_code — e.g. asking to register two
+                    # functions "together" can make the model emit two
+                    # parallel tool calls that then race on the same dict,
+                    # raising "RuntimeError: dictionary changed size during
+                    # iteration". Forcing max_concurrency=1 makes ToolNode
+                    # run tool calls sequentially instead.
+                    "max_concurrency": 1,
+                }
                 final_answer = ""
                 it = pool.supervisor.stream(
                     {"messages": [{"role": "user", "content": enhanced}]},

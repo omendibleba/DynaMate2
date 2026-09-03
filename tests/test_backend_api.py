@@ -195,3 +195,47 @@ def test_tool_upload_rejects_non_python(client):
         files={"file": ("not_a_tool.txt", b"hello", "text/plain")},
     )
     assert resp.status_code == 400
+
+
+def test_register_two_tools_at_once_no_parallel_tool_call_race(tmp_path, monkeypatch):
+    """
+    Regression test: asking to register two functions "together" (T1b) can
+    make the model emit two parallel tool calls to register_tool_from_code.
+    LangGraph's ToolNode runs those via a ThreadPoolExecutor by default
+    (see langgraph.prebuilt.ToolNode._func), and dynamate's AgentPool
+    mutates plain, non-thread-safe dicts (_tool_registry, _agents) inside
+    tool calls — two concurrent registrations can race on the same dict and
+    raise "RuntimeError: dictionary changed size during iteration".
+    chat.py now passes max_concurrency=1 in the LangGraph config to force
+    sequential tool execution. Runs against an isolated scratch state dir
+    (not the shared module-scoped `client` fixture's ui_state) so both
+    tools are genuinely new registrations, not skipped re-registrations.
+    """
+    monkeypatch.setattr(state, "STATE_DIR", str(tmp_path))
+    monkeypatch.setattr(state, "UPLOADS_DIR", str(tmp_path / "uploads"))
+    monkeypatch.setattr(state, "THREADS_DB", str(tmp_path / "threads.json"))
+
+    with TestClient(app) as scratch_client:
+        thread_id = scratch_client.post("/api/threads").json()["id"]
+
+        events = []
+        with scratch_client.stream(
+            "POST",
+            "/api/chat/stream",
+            json={"thread_id": thread_id, "message": PROMPTS["t1b"]},
+            timeout=120,
+        ) as resp:
+            assert resp.status_code == 200
+            event_type = None
+            for line in resp.iter_lines():
+                if line.startswith("event:"):
+                    event_type = line.split(":", 1)[1].strip()
+                elif line.startswith("data:") and event_type:
+                    events.append((event_type, json.loads(line.split(":", 1)[1].strip())))
+                    event_type = None
+
+        error_events = [d for etype, d in events if etype == "error"]
+        assert not error_events, f"unexpected error event(s): {error_events}"
+
+        registry = scratch_client.get("/api/status").json()["registry"]
+        assert set(registry) == {"smiles_to_xyz", "packmol_build_system"}
