@@ -27,7 +27,6 @@ Restoration sequence (handled by build_system in main.py)
      agents, re-applies assignments from the JSON store.
 """
 
-import ast
 import json
 import os
 import sqlite3
@@ -35,28 +34,7 @@ import textwrap
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from .pool import AgentPoolWithSupervisor
-
-
-def _extract_function_sources(code: str) -> dict:
-    """Return {func_name: source_str} for every top-level function in *code*.
-
-    Uses the AST to locate each function's exact line range so that
-    multi-function code blocks are split into individual .py files rather than
-    saving the full combined source for every registered tool.
-    """
-    sources = {}
-    lines = code.splitlines(keepends=True)
-    try:
-        tree = ast.parse(code)
-    except SyntaxError:
-        return sources
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            start = node.lineno - 1          # ast lines are 1-indexed
-            end   = node.end_lineno          # end_lineno is inclusive
-            sources[node.name] = "".join(lines[start:end])
-    return sources
+from .pool import AgentPoolWithSupervisor, _extract_function_sources
 
 
 # ── Conversation-history persistence ──────────────────────────────────────────
@@ -205,16 +183,25 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
         return self
 
     def register_tool_from_code(self, code: str) -> str:
+        before = dict(self._tool_registry)
         result = super().register_tool_from_code(code)
-        # Track source code for each newly registered tool and write .py file.
-        # Extract each function's own source so that smiles_to_xyz.py and
-        # packmol_build_system.py each get only their own definition, not the
-        # full combined code string.
-        if "Registered:" in result:
+        # Persist source for every name that's new OR was updated (a
+        # same-name, different-source re-registration) — extract each
+        # function's own source so that smiles_to_xyz.py and
+        # packmol_build_system.py each get only their own definition, not
+        # the full combined code string. Both new and updated names need
+        # their .py file / _source_registry entry refreshed to the CURRENT
+        # implementation, or restore_state() would reload stale source
+        # after a restart even though the in-memory registry (and any
+        # already-assigned agents, via AgentPoolWithSupervisor's own
+        # register_tool_from_code override) were correctly updated.
+        if "Registered:" in result or "Updated" in result:
             dedented = textwrap.dedent(code)
             func_sources = _extract_function_sources(dedented)
-            for name in self._tool_registry:
-                if name not in self._source_registry:
+            for name, tool_obj in self._tool_registry.items():
+                is_new = name not in before
+                is_updated = name in before and before[name] is not tool_obj
+                if is_new or is_updated:
                     src = func_sources.get(name, dedented)
                     self._source_registry[name] = src
                     self._pool_store.save_tool(name, src)

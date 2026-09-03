@@ -7,11 +7,25 @@ AgentPoolWithSupervisor – extends AgentPool; owns and rebuilds the supervisor
 
 Rebuild cost summary
 ────────────────────
-  pool.add_agent(...)    → rebuilds that agent  +  rebuilds supervisor
-  pool.assign_tool(...)  → rebuilds only the target agent (supervisor untouched)
-  pool.supervisor        → property; always returns the current compiled graph
+  pool.add_agent(...)             → rebuilds that agent  +  rebuilds supervisor
+  pool.remove_agent(...)          → rebuilds supervisor
+  pool.assign_tool(...)           → rebuilds that agent  +  rebuilds supervisor
+  pool.remove_tool(...)           → rebuilds affected agents  +  rebuilds supervisor
+  pool.register_tool_from_code(...) → rebuilds any agent already holding an
+                                       updated (same-name, different-source)
+                                       tool, + rebuilds supervisor if any were
+  pool.supervisor                 → property; always returns the current compiled graph
+
+  On AgentPoolWithSupervisor (and its PersistentAgentPoolWithSupervisor
+  subclass), every one of the above always keeps the supervisor's compiled
+  graph in sync with pool state — there is no operation that changes
+  _agents/_tool_registry without also refreshing whatever the supervisor
+  currently has wired in. If you add a new state-mutating method, it needs
+  the same treatment, or the supervisor will silently route to whatever
+  stale snapshot it last compiled.
 """
 
+import ast
 import inspect
 import textwrap
 
@@ -21,6 +35,29 @@ from langchain_core.tools import StructuredTool
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph_supervisor import create_supervisor
+
+
+def _extract_function_sources(code: str) -> dict:
+    """Return {func_name: source_str} for every top-level function in *code*.
+
+    Uses the AST to locate each function's exact line range so that
+    multi-function code blocks are split into individual per-tool source
+    snippets (for both persistence.py's per-tool .py files and
+    register_tool_from_code's same-vs-different-source comparison) rather
+    than treating the full combined code string as one unit.
+    """
+    sources = {}
+    lines = code.splitlines(keepends=True)
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return sources
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            start = node.lineno - 1          # ast lines are 1-indexed
+            end   = node.end_lineno          # end_lineno is inclusive
+            sources[node.name] = "".join(lines[start:end])
+    return sources
 
 
 def _make_model_selector(base_model, domain_tools: list):
@@ -70,6 +107,10 @@ class AgentPool:
         self._agents: dict = {}
         # {tool_name: StructuredTool}
         self._tool_registry: dict = {}
+        # {tool_name: dedented source string} — lets register_tool_from_code
+        # tell a genuine re-registration (identical source, silent no-op)
+        # apart from a same-named tool with different code (an update).
+        self._tool_source: dict = {}
 
     # ── agent management ──────────────────────────────────────────────────────
 
@@ -103,14 +144,29 @@ class AgentPool:
     # ── tool registration ─────────────────────────────────────────────────────
 
     def register_tool_from_code(self, code: str) -> str:
-        """Execute *code* and store every new top-level callable in the registry."""
+        """
+        Execute *code* and store every new top-level callable in the registry.
+
+        A name already in the registry is handled based on whether the new
+        source actually differs from what's there:
+          - identical source (e.g. restore_state() reloading the same tool,
+            or the same registration prompt sent twice) -> silent no-op.
+          - different source under the same name -> UPDATE the registry
+            (matches the "update it if it already exists" behavior already
+            promised by tool_manager's own prompts) and say so explicitly —
+            never silently, since this could be an intentional fix or an
+            accidental name collision between two unrelated tools, and the
+            caller needs to be able to tell which happened.
+        """
+        dedented = textwrap.dedent(code)
         namespace: dict = {}
         try:
-            exec(textwrap.dedent(code), namespace)
+            exec(dedented, namespace)
         except Exception as e:
             return f"Syntax/execution error: {e}"
 
-        added, skipped = [], []
+        func_sources = _extract_function_sources(dedented)
+        added, updated, unchanged = [], [], []
         for name, obj in namespace.items():
             if name.startswith("_"):
                 continue
@@ -124,23 +180,35 @@ class AgentPool:
             # and an empty description makes the tool invisible to routing.
             if not (obj.__doc__ or "").strip():
                 continue
-            if name in self._tool_registry:
-                skipped.append(name)
-                continue
+
+            new_source = func_sources.get(name, dedented)
+            already_registered = name in self._tool_registry
+            if already_registered:
+                old_source = self._tool_source.get(name)
+                if old_source is not None and old_source.strip() == new_source.strip():
+                    unchanged.append(name)
+                    continue
+
             try:
                 self._tool_registry[name] = StructuredTool.from_function(obj)
-                added.append(name)
+                self._tool_source[name] = new_source
             except Exception as e:
                 return f"Could not convert '{name}' to a tool: {e}"
+            (updated if already_registered else added).append(name)
 
-        if not added and not skipped:
+        if not added and not updated and not unchanged:
             return "No callable functions found in the provided code."
 
         parts = []
         if added:
             parts.append(f"Registered: {', '.join(added)}")
-        if skipped:
-            parts.append(f"Already registered (skipped): {', '.join(skipped)}")
+        if updated:
+            parts.append(
+                f"Updated (source changed for an existing name — verify this was "
+                f"intentional, not an accidental name collision): {', '.join(updated)}"
+            )
+        if unchanged:
+            parts.append(f"Already registered, unchanged: {', '.join(unchanged)}")
         return " | ".join(parts)
 
     def register_tool_from_file(self, file_path: str) -> str:
@@ -355,6 +423,41 @@ class AgentPoolWithSupervisor(AgentPool):
         result = super().remove_tool(tool_name)
         if "Unassigned from and rebuilt" in result:
             self._rebuild_supervisor()
+        return result
+
+    def register_tool_from_code(self, code: str) -> str:
+        """
+        Register/update a tool, then propagate any update to every agent
+        that already has it assigned.
+
+        AgentPool.register_tool_from_code() replaces self._tool_registry[name]
+        with a fresh StructuredTool object when a same-named tool's source
+        changes — but an agent that already had the OLD tool object bound
+        (via assign_tool, which copies the object reference into
+        entry["extra_tools"] at assignment time) keeps calling the stale
+        implementation forever otherwise. Same staleness pattern as
+        assign_tool/remove_tool above, one level deeper: the tool object
+        itself rather than the agent object.
+        """
+        before = dict(self._tool_registry)
+        result = super().register_tool_from_code(code)
+
+        affected_agents = []
+        for name, tool_obj in self._tool_registry.items():
+            if name not in before or before[name] is tool_obj:
+                continue  # brand new, or unchanged — nothing to propagate
+            for agent_name, entry in self._agents.items():
+                if any(t.name == name for t in entry["extra_tools"]):
+                    entry["extra_tools"] = [
+                        tool_obj if t.name == name else t for t in entry["extra_tools"]
+                    ]
+                    affected_agents.append(agent_name)
+
+        for agent_name in affected_agents:
+            self._rebuild_agent(agent_name)
+        if affected_agents:
+            self._rebuild_supervisor()
+
         return result
 
     # ── internal ──────────────────────────────────────────────────────────────

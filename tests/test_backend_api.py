@@ -427,3 +427,114 @@ def test_status_endpoint_survives_concurrent_pool_mutation(client, monkeypatch):
         monkeypatch.setattr(pool, "_tool_registry", original_registry)
 
     assert "_race_injected_tool" in result.registry
+
+
+def _minimal_pool():
+    """
+    A bare AgentPoolWithSupervisor for testing register_tool_from_code() /
+    assign_tool()'s pure Python logic directly, with no LLM calls at all —
+    ChatOpenAI is only ever constructed here, never invoked, since these
+    tests call pool methods directly instead of routing through the
+    supervisor/an LLM turn.
+    """
+    from langchain_openai import ChatOpenAI
+
+    from dynamate import AgentPoolWithSupervisor, build_tool_manager_v2
+
+    model = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+    pool = AgentPoolWithSupervisor(supervisor_model=model, supervisor_prompt="test")
+    tool_manager = build_tool_manager_v2(pool, model)
+    pool.set_system_agents([tool_manager])
+    return pool, model
+
+
+def test_register_tool_same_source_is_unchanged_not_reregistered():
+    """Re-registering identical source under an existing name stays a
+    silent-in-effect no-op — but is now explicitly labeled 'unchanged'
+    rather than the old ambiguous 'skipped' wording."""
+    pool, _ = _minimal_pool()
+
+    source = '''
+def greet(name: str) -> str:
+    """Say hello."""
+    return f"Hello, {name}!"
+'''
+    first = pool.register_tool_from_code(source)
+    assert "Registered: greet" in first
+
+    second = pool.register_tool_from_code(source)
+    assert "Registered" not in second
+    assert "Updated" not in second
+    assert "unchanged" in second.lower()
+
+
+def test_register_tool_different_source_updates_and_says_so():
+    """
+    Regression test for the fix: re-registering a DIFFERENT implementation
+    under an existing name now updates the registry and says so explicitly
+    ('Updated'), instead of silently keeping the old, possibly-buggy
+    version and reporting a vague 'skipped'.
+    """
+    pool, _ = _minimal_pool()
+
+    v1 = '''
+def greet(name: str) -> str:
+    """Say hello, v1."""
+    return f"Hello, {name}!"
+'''
+    v2 = '''
+def greet(name: str) -> str:
+    """Say hello, v2."""
+    return f"Hi there, {name}!!"
+'''
+    pool.register_tool_from_code(v1)
+    old_tool = pool._tool_registry["greet"]
+
+    result = pool.register_tool_from_code(v2)
+    assert "Updated" in result
+    assert "greet" in result
+
+    new_tool = pool._tool_registry["greet"]
+    assert new_tool is not old_tool
+    assert new_tool.func("World") == "Hi there, World!!"
+
+
+def test_register_tool_update_propagates_to_assigned_agent():
+    """
+    Regression test for the propagation half of the fix: updating a tool's
+    source must also refresh any agent that already has the OLD tool
+    object bound (via assign_tool, which copies the reference at
+    assignment time) — otherwise 'Updated' would be a half-truth, and the
+    agent would keep calling the stale implementation indefinitely. Same
+    staleness pattern as the assign_tool/remove_tool bug fixed earlier
+    today, one level deeper: the tool object itself, not the agent object.
+    """
+    pool, model = _minimal_pool()
+
+    v1 = '''
+def greet(name: str) -> str:
+    """Say hello, v1."""
+    return f"Hello, {name}!"
+'''
+    v2 = '''
+def greet(name: str) -> str:
+    """Say hello, v2."""
+    return f"Hi there, {name}!!"
+'''
+    pool.register_tool_from_code(v1)
+    pool.add_agent("greeter", model, base_tools=[], system_prompt="You are a greeter.")
+    assign_result = pool.assign_tool("greet", "greeter")
+    assert "Assigned" in assign_result
+
+    bound_before = next(t for t in pool._agents["greeter"]["extra_tools"] if t.name == "greet")
+    assert bound_before.func("World") == "Hello, World!"
+
+    pool.register_tool_from_code(v2)
+
+    bound_after = next(t for t in pool._agents["greeter"]["extra_tools"] if t.name == "greet")
+    assert bound_after.func("World") == "Hi there, World!!", (
+        "greeter's bound tool object was not updated after register_tool_from_code "
+        "changed 'greet' — the exact staleness bug (assign_tool/remove_tool class) "
+        "fixed today for tool updates"
+    )
+    assert bound_after is pool._tool_registry["greet"]
