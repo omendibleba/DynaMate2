@@ -4,7 +4,8 @@ import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react'
 import createPanZoom, { type PanZoom } from 'panzoom'
 import { useEffect, useId, useRef, useState } from 'react'
 import { getStatus } from '../lib/api'
-import { buildMermaidGraph } from '../lib/mermaidGraph'
+import { buildMermaidGraph, type GraphNode, type NodeIndex } from '../lib/mermaidGraph'
+import { GraphNodeDetail } from './GraphNodeDetail'
 
 mermaid.initialize({ startOnLoad: false, theme: 'base', securityLevel: 'strict' })
 
@@ -20,11 +21,29 @@ function ZoomButton({ onClick, label, children }: { onClick: () => void; label: 
   )
 }
 
+// Mermaid renders each flowchart node as <g id="flowchart-<ourId>-<n>">
+// (n is mermaid's own internal counter) — never a mermaid `click` directive
+// (that needs securityLevel: 'loose', unnecessary risk since names trace
+// back to user-registerable content). A plain delegated listener plus this
+// regex recovers the id we generated in buildMermaidGraph().
+const FLOWCHART_ID_RE = /^flowchart-(.+?)-\d+$/
+
+function resolveClickedNode(target: Element, nodeIndex: NodeIndex): GraphNode | null {
+  const g = target.closest('g[id^="flowchart-"]')
+  const id = g?.getAttribute('id')
+  if (!id) return null
+  const match = FLOWCHART_ID_RE.exec(id)
+  const rawId = match?.[1]
+  return rawId ? (nodeIndex[rawId] ?? null) : null
+}
+
 export function AgentGraphPanel() {
   const { data: status, isError } = useQuery({ queryKey: ['status'], queryFn: getStatus })
   const domId = `agent-graph-${useId().replace(/:/g, '')}`
   const [svg, setSvg] = useState('')
+  const [nodeIndex, setNodeIndex] = useState<NodeIndex>({})
   const [renderError, setRenderError] = useState<string | null>(null)
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
 
   const viewportRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -32,12 +51,13 @@ export function AgentGraphPanel() {
 
   useEffect(() => {
     let cancelled = false
-    const definition = buildMermaidGraph(status ?? { agents: [], registry: [] })
+    const { definition, nodeIndex: index } = buildMermaidGraph(status ?? { agents: [], registry: [], tool_descriptions: {} })
     mermaid
       .render(domId, definition)
       .then((result) => {
         if (!cancelled) {
           setSvg(result.svg)
+          setNodeIndex(index)
           setRenderError(null)
         }
       })
@@ -83,6 +103,17 @@ export function AgentGraphPanel() {
     instance.zoomAbs(0, 0, 1)
   }
 
+  function handleGraphClick(e: React.MouseEvent) {
+    const node = resolveClickedNode(e.target as Element, nodeIndex)
+    setSelectedNode(node)
+  }
+
+  const description = selectedNode
+    ? selectedNode.kind === 'agent'
+      ? (status?.agents.find((a) => a.name === selectedNode.name)?.system_prompt ?? '')
+      : (status?.tool_descriptions[selectedNode.name] ?? '')
+    : ''
+
   return (
     <div className="flex h-full flex-col rounded-xl border border-line bg-surface p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
@@ -103,7 +134,12 @@ export function AgentGraphPanel() {
       {renderError && <p className="text-sm text-ink-faint">Couldn't render graph: {renderError}</p>}
 
       <div ref={viewportRef} className="relative flex-1 overflow-hidden">
-        <div ref={contentRef} className="h-full w-full origin-top-left" dangerouslySetInnerHTML={{ __html: svg }} />
+        <div
+          ref={contentRef}
+          className="h-full w-full origin-top-left cursor-pointer"
+          onClick={handleGraphClick}
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
         <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
           <ZoomButton onClick={() => zoomAtCenter(1.4)} label="Zoom in">
             <ZoomIn className="h-4 w-4" />
@@ -115,6 +151,9 @@ export function AgentGraphPanel() {
             <Maximize2 className="h-4 w-4" />
           </ZoomButton>
         </div>
+        {selectedNode && (
+          <GraphNodeDetail node={selectedNode} description={description} onClose={() => setSelectedNode(null)} />
+        )}
       </div>
     </div>
   )

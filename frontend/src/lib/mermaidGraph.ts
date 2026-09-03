@@ -23,27 +23,38 @@ function escapeLabel(name: string): string {
   return name.replace(/"/g, '&quot;')
 }
 
-export function buildMermaidGraph(status: StatusResponse): string {
+export type GraphNode = { kind: 'agent'; name: string } | { kind: 'tool'; name: string; agentName: string }
+
+/** Maps each positional mermaid node id (agent_0, tool_0_1, ...) back to the
+ *  agent/tool it represents — supervisor is intentionally excluded, it has
+ *  no per-node description to show. */
+export type NodeIndex = Record<string, GraphNode>
+
+export function buildMermaidGraph(status: StatusResponse): { definition: string; nodeIndex: NodeIndex } {
   const lines: string[] = ['flowchart LR', 'supervisor(["Supervisor"]):::supervisor']
+  const nodeIndex: NodeIndex = {}
 
   status.agents.forEach((agent, i) => {
     const agentId = `agent_${i}`
     lines.push(`${agentId}["${escapeLabel(agent.name)}"]:::agent`)
     lines.push(`supervisor --> ${agentId}`)
+    nodeIndex[agentId] = { kind: 'agent', name: agent.name }
 
     agent.base_tools.forEach((tool, j) => {
       const toolId = `${agentId}_base_${j}`
       lines.push(`${toolId}["${escapeLabel(tool)}"]:::base`)
       lines.push(`${agentId} --- ${toolId}`)
+      nodeIndex[toolId] = { kind: 'tool', name: tool, agentName: agent.name }
     })
 
     agent.extra_tools.forEach((tool, j) => {
       const toolId = `${agentId}_extra_${j}`
       lines.push(`${toolId}["${escapeLabel(tool)}"]:::extra`)
       lines.push(`${agentId} --- ${toolId}`)
+      nodeIndex[toolId] = { kind: 'tool', name: tool, agentName: agent.name }
     })
   })
 
   lines.push(CLASS_DEFS)
-  return lines.join('\n')
+  return { definition: lines.join('\n'), nodeIndex }
 }

@@ -5,11 +5,13 @@ export interface AgentStatus {
   name: string
   base_tools: string[]
   extra_tools: string[]
+  system_prompt: string
 }
 
 export interface StatusResponse {
   agents: AgentStatus[]
   registry: string[]
+  tool_descriptions: Record<string, string>
 }
 
 export interface ThreadInfo {

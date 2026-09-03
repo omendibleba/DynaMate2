@@ -20,8 +20,17 @@ def _snapshot_status(pool) -> StatusResponse:
             name=name,
             base_tools=[t.name for t in entry.get("base_tools", [])],
             extra_tools=[t.name for t in entry.get("extra_tools", [])],
+            system_prompt=entry.get("system_prompt") or "",
         ))
-    return StatusResponse(agents=agents, registry=pool.list_registered_tools())
+    tool_descriptions = {
+        name: (getattr(tool, "description", "") or "")
+        for name, tool in pool._tool_registry.items()
+    }
+    return StatusResponse(
+        agents=agents,
+        registry=pool.list_registered_tools(),
+        tool_descriptions=tool_descriptions,
+    )
 
 
 @router.get("/status", response_model=StatusResponse)

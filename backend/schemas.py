@@ -15,11 +15,13 @@ class AgentStatus(BaseModel):
     name: str
     base_tools: list[str]
     extra_tools: list[str]
+    system_prompt: str
 
 
 class StatusResponse(BaseModel):
     agents: list[AgentStatus]
     registry: list[str]
+    tool_descriptions: dict[str, str]
 
 
 class ThreadInfo(BaseModel):
