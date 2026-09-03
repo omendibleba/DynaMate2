@@ -83,6 +83,12 @@ async def chat_stream(req: ChatRequest, pool=Depends(get_pool), enhancer=Depends
                     "max_concurrency": 1,
                 }
                 final_answer = ""
+                # An AI-authored chunk is only shown as a trace event once a
+                # *later* chunk proves it wasn't the final answer — the last
+                # AI chunk in the stream always becomes final_answer, and
+                # showing its full text as a trace entry would just repeat
+                # the chat bubble the user is about to see below it.
+                pending_ai_trace: tuple[str, str, bool] | None = None
                 it = pool.supervisor.stream(
                     {"messages": [{"role": "user", "content": enhanced}]},
                     config=config,
@@ -94,9 +100,21 @@ async def chat_stream(req: ChatRequest, pool=Depends(get_pool), enhancer=Depends
                         break
                     node, content, is_ai = parse_chunk(chunk)
                     if node and content:
-                        yield _sse("trace", node=node, content=content[:300], is_ai=is_ai)
+                        if pending_ai_trace is not None:
+                            p_node, p_content, p_is_ai = pending_ai_trace
+                            yield _sse("trace", node=p_node, content=p_content[:300], is_ai=p_is_ai)
+                            pending_ai_trace = None
                         if is_ai:
                             final_answer = content
+                            pending_ai_trace = (node, content, is_ai)
+                        else:
+                            yield _sse("trace", node=node, content=content[:300], is_ai=is_ai)
+
+                if pending_ai_trace is not None:
+                    p_node, _, p_is_ai = pending_ai_trace
+                    yield _sse(
+                        "trace", node=p_node, content="Supervisor response — see answer below.", is_ai=p_is_ai
+                    )
 
                 final_answer = final_answer or "(No response)"
                 state.save_thread(req.thread_id, req.message[:60])

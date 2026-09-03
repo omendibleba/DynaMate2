@@ -100,9 +100,13 @@ def test_chat_stream_incremental(client):
                 event_type = None
 
     assert len(events) >= 2, "expected at least an enhancer trace + a final event"
+    # The enhancer trace now shows only the routing hint it appended, not
+    # the full (original + hint) message — see backend/routes/chat.py. This
+    # prompt has no matching tool/agent to route to, so enhance() returns
+    # the input unchanged and there's no addition to show.
     assert events[0] == ("trace", {
         "node": "enhancer",
-        "content": "What capabilities have been added to the system so far?",
+        "content": "(no routing hint added)",
         "is_ai": False,
     })
     final_events = [d for etype, d in events if etype == "final"]
