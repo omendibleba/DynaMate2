@@ -1,5 +1,9 @@
 # DynaMate2
 
+<p align="center">
+  <img src="frontend/src/assets/dynamate2-logo.png" alt="DynaMate2 logo" width="140" />
+</p>
+
 **DynaMate2** is a dynamic multi-agent framework built on [LangGraph](https://github.com/langchain-ai/langgraph) that lets users register new Python functions as agent tools and create new specialist agents at runtime — through natural language prompts — without restarting the system. All tools, agents, and conversation history are persisted to disk and restored automatically on the next session.
 
 A **Prompt Enhancer** layer sits between the user and the Supervisor. It reads the live pool state and rewrites each raw user query with explicit routing hints — agent names and relevant tool names — so users never need to know internal names to get correct routing.
