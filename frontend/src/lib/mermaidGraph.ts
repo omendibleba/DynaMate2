@@ -25,33 +25,39 @@ function escapeLabel(name: string): string {
 
 export type GraphNode = { kind: 'agent'; name: string } | { kind: 'tool'; name: string; agentName: string }
 
-/** Maps each positional mermaid node id (agent_0, tool_0_1, ...) back to the
- *  agent/tool it represents — supervisor is intentionally excluded, it has
- *  no per-node description to show. */
-export type NodeIndex = Record<string, GraphNode>
+/** Looks a clicked node back up by its rendered LABEL TEXT, not a DOM id —
+ *  mermaid's generated id format isn't part of its public contract and
+ *  varies by renderer/version, but the label text we provide is rendered
+ *  verbatim, and the :::agent/:::base/:::extra classDef names we already
+ *  use for node color ARE guaranteed to land as real CSS classes on the
+ *  rendered node (that's the only way the color-coding works at all). */
+export interface NodeIndex {
+  agents: Record<string, GraphNode>
+  tools: Record<string, GraphNode>
+}
 
 export function buildMermaidGraph(status: StatusResponse): { definition: string; nodeIndex: NodeIndex } {
   const lines: string[] = ['flowchart LR', 'supervisor(["Supervisor"]):::supervisor']
-  const nodeIndex: NodeIndex = {}
+  const nodeIndex: NodeIndex = { agents: {}, tools: {} }
 
   status.agents.forEach((agent, i) => {
     const agentId = `agent_${i}`
     lines.push(`${agentId}["${escapeLabel(agent.name)}"]:::agent`)
     lines.push(`supervisor --> ${agentId}`)
-    nodeIndex[agentId] = { kind: 'agent', name: agent.name }
+    nodeIndex.agents[agent.name] = { kind: 'agent', name: agent.name }
 
     agent.base_tools.forEach((tool, j) => {
       const toolId = `${agentId}_base_${j}`
       lines.push(`${toolId}["${escapeLabel(tool)}"]:::base`)
       lines.push(`${agentId} --- ${toolId}`)
-      nodeIndex[toolId] = { kind: 'tool', name: tool, agentName: agent.name }
+      nodeIndex.tools[tool] = { kind: 'tool', name: tool, agentName: agent.name }
     })
 
     agent.extra_tools.forEach((tool, j) => {
       const toolId = `${agentId}_extra_${j}`
       lines.push(`${toolId}["${escapeLabel(tool)}"]:::extra`)
       lines.push(`${agentId} --- ${toolId}`)
-      nodeIndex[toolId] = { kind: 'tool', name: tool, agentName: agent.name }
+      nodeIndex.tools[tool] = { kind: 'tool', name: tool, agentName: agent.name }
     })
   })
 

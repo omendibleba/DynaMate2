@@ -21,34 +21,38 @@ function ZoomButton({ onClick, label, children }: { onClick: () => void; label: 
   )
 }
 
-// Mermaid renders each flowchart node as <g id="flowchart-<ourId>-<n>">
-// (n is mermaid's own internal counter) — never a mermaid `click` directive
-// (that needs securityLevel: 'loose', unnecessary risk since names trace
-// back to user-registerable content). A plain delegated listener plus this
-// regex recovers the id we generated in buildMermaidGraph().
-const FLOWCHART_ID_RE = /^flowchart-(.+?)-\d+$/
-
+// Resolve a click by the node's rendered label text + its classDef class
+// (agent/base/extra — the same classes that already drive node color),
+// not a DOM id: mermaid's generated id format isn't part of its public
+// contract, unlike '.node' (a stable, documented convention) and our own
+// classDef names, which are guaranteed present since they're literally
+// what produces the color-coding already visible in the graph. Never a
+// mermaid `click` directive either — that needs securityLevel: 'loose',
+// unnecessary risk since names trace back to user-registerable content.
 function resolveClickedNode(target: Element, nodeIndex: NodeIndex): GraphNode | null {
-  const g = target.closest('g[id^="flowchart-"]')
-  const id = g?.getAttribute('id')
-  if (!id) return null
-  const match = FLOWCHART_ID_RE.exec(id)
-  const rawId = match?.[1]
-  return rawId ? (nodeIndex[rawId] ?? null) : null
+  const nodeEl = target.closest('.node')
+  if (!nodeEl) return null
+  const label = nodeEl.textContent?.trim() ?? ''
+  if (!label) return null
+  const classes = nodeEl.classList
+  if (classes.contains('agent')) return nodeIndex.agents[label] ?? null
+  if (classes.contains('base') || classes.contains('extra')) return nodeIndex.tools[label] ?? null
+  // supervisor (and anything unclassified) has no per-node description.
+  return null
 }
 
 export function AgentGraphPanel() {
   const { data: status, isError } = useQuery({ queryKey: ['status'], queryFn: getStatus })
   const domId = `agent-graph-${useId().replace(/:/g, '')}`
   const [svg, setSvg] = useState('')
-  const [nodeIndex, setNodeIndex] = useState<NodeIndex>({})
+  const [nodeIndex, setNodeIndex] = useState<NodeIndex>({ agents: {}, tools: {} })
   const [renderError, setRenderError] = useState<string | null>(null)
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
 
   const viewportRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const panzoomRef = useRef<PanZoom | null>(null)
-  const nodeIndexRef = useRef<NodeIndex>({})
+  const nodeIndexRef = useRef<NodeIndex>({ agents: {}, tools: {} })
   useEffect(() => {
     nodeIndexRef.current = nodeIndex
   }, [nodeIndex])
