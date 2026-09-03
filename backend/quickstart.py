@@ -35,7 +35,7 @@ PROMPT_T1A = (
     "    (MACE-MP-0b3, MACE-MPA-0, etc.) and skips re-downloading if the file \n"
     "    already exists. Please add it to the system so I can use it later.\n\n"
     "\n"
-    + _DOWNLOAD_CODE
+    "```python\n" + _DOWNLOAD_CODE + "\n```"
 )
 
 # ── T1b: Register smiles_to_xyz + packmol_build_system from inline code ─────────
@@ -47,7 +47,7 @@ PROMPT_T1B = (
     "    it takes one or more XYZ files and places copies of the molecules inside\n"
     "    a cubic box of a given size. Please register both so I can use them later.\n\n"
     "\n"
-    + _SMILES_CODE + "\n" + _PACKMOL_CODE
+    "```python\n" + _SMILES_CODE + "\n```\n\n```python\n" + _PACKMOL_CODE + "\n```"
 )
 
 # ── T1c: Create mace_md_specialist ──────────────────────────────────────────────
