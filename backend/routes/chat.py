@@ -46,7 +46,26 @@ async def chat_stream(req: ChatRequest, pool=Depends(get_pool), enhancer=Depends
             # client.
             try:
                 enhanced = await asyncio.to_thread(enhancer.enhance, req.message)
-                yield _sse("trace", node="enhancer", content=enhanced, is_ai=False)
+                # The enhancer keeps the original message fully intact and
+                # appends a routing hint (see dynamate/prompt_enhancer.py) —
+                # the trace should show only that addition, not repeat the
+                # whole prompt the user already sees in the chat pane.
+                stripped_input = req.message.strip()
+                if enhanced.startswith(stripped_input):
+                    addition = enhanced[len(stripped_input):].strip()
+                else:
+                    addition = enhanced
+                # Code-registration prompts (see PromptEnhancer._extract_code)
+                # re-embed the full extracted function source in the
+                # addition itself — cap it like every other trace node so a
+                # large tool doesn't dump its whole body into the trace.
+                display_addition = addition[:300] + ("…" if len(addition) > 300 else "")
+                yield _sse(
+                    "trace",
+                    node="enhancer",
+                    content=display_addition or "(no routing hint added)",
+                    is_ai=False,
+                )
 
                 config = {
                     "configurable": {"thread_id": req.thread_id},
