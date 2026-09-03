@@ -15,6 +15,13 @@ QUICK START
                                          # is unavailable through an SSH/VS
                                          # Code tunnel on a remote machine
 
+  DYNAMATE_STATE_DIR=/tmp/dynamate_test_state python server.py
+                                         # run against a scratch state dir
+                                         # instead of the real ui_state/ —
+                                         # e.g. for a from-scratch tutorial
+                                         # walkthrough with no prior tools/
+                                         # agents/conversation history
+
 On a remote machine (HPC node, etc.) this only binds the port locally —
 you still need to forward it to your own machine (an SSH -L tunnel, or
 VS Code's Ports panel) before http://localhost:<port> will load in your
@@ -29,6 +36,8 @@ import os
 
 import uvicorn
 
+from backend import state
+
 _FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
 _PORT = int(os.getenv("DYNAMATE_PORT", "8888"))
 
@@ -41,6 +50,7 @@ if __name__ == "__main__":
         )
 
     print(f"DynaMate2: listening on port {_PORT} (bound to all interfaces).", flush=True)
+    print(f"  State directory: {state.STATE_DIR}", flush=True)
     print(f"  Open this in your browser: http://localhost:{_PORT}", flush=True)
     print(f"  (NOT http://0.0.0.0:{_PORT} — that's a bind address, not something "
           f"a browser can connect to)", flush=True)

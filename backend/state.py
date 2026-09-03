@@ -11,7 +11,11 @@ import os
 from datetime import datetime
 
 ROOT        = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATE_DIR   = os.path.join(ROOT, "ui_state")
+# Override with DYNAMATE_STATE_DIR to point at a scratch directory instead of
+# the real ui_state/ — e.g. for a from-scratch tutorial walkthrough without
+# touching live tools/agents/conversation history:
+#   DYNAMATE_STATE_DIR=/tmp/dynamate_test_state python server.py
+STATE_DIR   = os.getenv("DYNAMATE_STATE_DIR") or os.path.join(ROOT, "ui_state")
 UPLOADS_DIR = os.path.join(STATE_DIR, "uploads")
 THREADS_DB  = os.path.join(STATE_DIR, "threads.json")
 TUTORIALS_DIR = os.path.join(ROOT, "tutorials")

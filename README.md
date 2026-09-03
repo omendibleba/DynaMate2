@@ -287,6 +287,14 @@ Open the Vite dev URL it prints (`http://localhost:5173`).
 Node.js is required for the frontend; if it isn't already on your `PATH`,
 `conda install -c conda-forge nodejs` into your environment.
 
+**Environment variables** (all optional):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DYNAMATE_PORT` | `8888` | Port `server.py` binds to |
+| `DYNAMATE_MODEL` | `gpt-4o-mini` | OpenAI model for the supervisor/agents |
+| `DYNAMATE_STATE_DIR` | `ui_state/` | Where tools/agents/conversations are persisted — point this at a scratch directory to run a from-scratch walkthrough (e.g. the tutorial's T1–T4 flow) without touching real state: `DYNAMATE_STATE_DIR=/tmp/dynamate_test_state python server.py` |
+
 ### Gradio Web UI (legacy)
 
 The original Gradio interface is preserved on the `gradio-ui-legacy` branch for
