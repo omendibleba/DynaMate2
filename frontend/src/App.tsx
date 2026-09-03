@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, Workflow } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AgentTracePanel } from './components/AgentTracePanel'
 import { ChatPanel } from './components/ChatPanel'
+import { NavBar, type TabId } from './components/NavBar'
 import { QuickStartPanel } from './components/QuickStartPanel'
 import { StatusSidebar } from './components/StatusSidebar'
 import { ThreadHistory } from './components/ThreadHistory'
@@ -9,6 +11,7 @@ import { useChatStream } from './hooks/useChatStream'
 import { createThread } from './lib/api'
 
 function App() {
+  const [tab, setTab] = useState<TabId>('chat')
   const [threadId, setThreadId] = useState<string | null>(null)
   const [threadInitError, setThreadInitError] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState('')
@@ -53,32 +56,14 @@ function App() {
   }
 
   return (
-    <div className="mx-auto flex h-screen max-w-6xl flex-col gap-4 p-4">
-      <header className="rounded-xl bg-gradient-to-br from-slate-900 via-blue-950 to-cyan-900 px-6 py-5 text-white">
-        <h1 className="text-2xl font-extrabold tracking-tight">⚗️ DynaMate2</h1>
-        <p className="text-sm font-medium text-cyan-200">Multi-Agent Molecular Simulation Assistant</p>
-        <p className="mt-1 max-w-3xl text-sm text-cyan-300/80">
-          Describe your simulation task in plain language — DynaMate2 routes it through a pool
-          of specialist agents, registers tools on the fly, and returns full numerical results
-          without any scripting.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {['MACE-MP-0b3', 'ASE MD', 'Packmol', 'RDKit', 'LangGraph'].map((badge) => (
-            <span
-              key={badge}
-              className="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-xs text-cyan-100"
-            >
-              {badge}
-            </span>
-          ))}
-        </div>
-      </header>
-
-      <QuickStartPanel onSelectPrompt={setInputValue} />
+    <div className="mx-auto flex h-screen max-w-6xl flex-col gap-4 bg-canvas p-4">
+      <NavBar tab={tab} onTabChange={setTab} />
 
       {threadInitError && (
         <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-          <span>⚠ Couldn't start a session: {threadInitError}</span>
+          <span className="flex items-center gap-1.5">
+            <AlertTriangle className="h-4 w-4" /> Couldn't start a session: {threadInitError}
+          </span>
           <button
             onClick={handleRetryThread}
             className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800"
@@ -88,31 +73,69 @@ function App() {
         </div>
       )}
 
-      <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-4">
-        <div className="flex flex-col gap-4 overflow-hidden md:col-span-3">
-          <div className="flex-1 overflow-hidden">
-            <ChatPanel
-              messages={messages}
-              isStreaming={isStreaming}
-              disabled={!threadId}
-              error={error}
-              onSend={send}
-              inputValue={inputValue}
-              onInputChange={setInputValue}
+      {tab === 'chat' && (
+        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-4">
+          <div className="flex flex-col gap-4 overflow-hidden md:col-span-3">
+            <div className="flex-1 overflow-hidden">
+              <ChatPanel
+                messages={messages}
+                isStreaming={isStreaming}
+                disabled={!threadId}
+                error={error}
+                onSend={send}
+                inputValue={inputValue}
+                onInputChange={setInputValue}
+              />
+            </div>
+            <AgentTracePanel trace={trace} />
+          </div>
+
+          <div className="flex flex-col gap-4 overflow-y-auto md:col-span-1">
+            <StatusSidebar />
+            <ThreadHistory
+              threadId={threadId}
+              onNewThread={handleNewThread}
+              onResumeThread={handleResumeThread}
             />
           </div>
-          <AgentTracePanel trace={trace} />
         </div>
+      )}
 
-        <div className="flex flex-col gap-4 overflow-y-auto md:col-span-1">
-          <StatusSidebar />
-          <ThreadHistory
-            threadId={threadId}
-            onNewThread={handleNewThread}
-            onResumeThread={handleResumeThread}
+      {tab === 'quickstart' && (
+        <div className="flex-1 overflow-y-auto">
+          <div className="mb-4 rounded-xl border border-line bg-surface p-4">
+            <h2 className="text-sm font-semibold text-ink">Quick Start</h2>
+            <p className="mt-1 max-w-3xl text-sm text-ink-muted">
+              Try DynaMate2 without writing a prompt yourself — these steps mirror the tutorial
+              notebook: register tools, spin up a specialist agent, build a simulation box, run
+              MD, and plot the trajectory.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {['MACE-MP-0b3', 'ASE MD', 'Packmol', 'RDKit', 'LangGraph'].map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-line-strong bg-surface-hover px-2.5 py-0.5 text-xs text-ink-muted"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
+          </div>
+          <QuickStartPanel
+            onSelectPrompt={(prompt) => {
+              setInputValue(prompt)
+              setTab('chat')
+            }}
           />
         </div>
-      </div>
+      )}
+
+      {tab === 'graph' && (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-line bg-surface text-ink-faint">
+          <Workflow className="h-8 w-8" />
+          <p className="text-sm">Agent graph coming soon…</p>
+        </div>
+      )}
     </div>
   )
 }

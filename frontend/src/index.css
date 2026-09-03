@@ -1,1 +1,65 @@
 @import "tailwindcss";
+
+:root {
+  /* warm-neutral surface system (light) */
+  --color-canvas: #fafaf9;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f5f5f4;
+  --color-line: #e7e5e4;
+  --color-line-strong: #d6d3d1;
+  --color-ink: #1c1917;
+  --color-ink-muted: #57534e;
+  --color-ink-faint: #a8a29e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #17140f;
+    --color-surface: #211d19;
+    --color-surface-hover: #2a2521;
+    --color-line: #3a332c;
+    --color-line-strong: #4a423a;
+    --color-ink: #f5f5f4;
+    --color-ink-muted: #a8a29e;
+    --color-ink-faint: #78716c;
+  }
+}
+
+@theme {
+  /* re-register the flippable tokens above as Tailwind utilities
+     (bg-canvas, bg-surface, border-line, text-ink, ...) */
+  --color-canvas: var(--color-canvas);
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-ink-faint: var(--color-ink-faint);
+
+  /* brand navy scale, anchored on the DynaMate2 logo's background (#0b2c4f) */
+  --color-brand-50: #eef5fc;
+  --color-brand-100: #d6e9f8;
+  --color-brand-200: #afd2ee;
+  --color-brand-300: #7eb2de;
+  --color-brand-400: #4c8fc7;
+  --color-brand-500: #2569a3;
+  --color-brand-600: #164e80;
+  --color-brand-700: #103c64;
+  --color-brand-800: #0d3155;
+  --color-brand-900: #0b2c4f;
+  --color-brand-950: #071d34;
+
+  /* calm accent for "live" states: streaming indicator, dynamically
+     registered tools in the agent graph, active tab underline */
+  --color-accent: #0e9f8e;
+  --color-accent-soft: #e6f7f5;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+}
