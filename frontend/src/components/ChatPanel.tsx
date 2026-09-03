@@ -1,6 +1,39 @@
 import { AlertTriangle, SendHorizontal } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import type { ChatMessage } from '../hooks/useChatStream'
+
+const FENCE_RE = /```(\w*)\n?([\s\S]*?)```/g
+
+/** Splits message text on ```-fenced code blocks and renders each fence as
+ *  a monospace block, matching how tool code (e.g. the LLM-registered-tool
+ *  quick-start flow) actually appears in chat responses. */
+function renderMessageContent(content: string, variant: 'user' | 'assistant') {
+  const nodes: React.ReactNode[] = []
+  let lastIndex = 0
+  let key = 0
+  for (const match of content.matchAll(FENCE_RE)) {
+    const index = match.index ?? 0
+    if (index > lastIndex) nodes.push(<Fragment key={key++}>{content.slice(lastIndex, index)}</Fragment>)
+    const lang = match[1]
+    const code = match[2].replace(/\n$/, '')
+    nodes.push(
+      <pre
+        key={key++}
+        className={`my-1.5 overflow-x-auto rounded-lg p-2 font-mono text-xs ${
+          variant === 'user'
+            ? 'border border-white/15 bg-white/10 text-white'
+            : 'border border-line bg-canvas text-ink'
+        }`}
+      >
+        {lang && <div className="mb-1 text-[10px] uppercase tracking-wide opacity-60">{lang}</div>}
+        <code>{code}</code>
+      </pre>,
+    )
+    lastIndex = index + match[0].length
+  }
+  if (lastIndex < content.length) nodes.push(<Fragment key={key++}>{content.slice(lastIndex)}</Fragment>)
+  return nodes
+}
 
 interface ChatPanelProps {
   messages: ChatMessage[]
@@ -52,7 +85,7 @@ export function ChatPanel({
                 m.role === 'user' ? 'bg-brand-800 text-white' : 'bg-surface-hover text-ink'
               }`}
             >
-              {m.content}
+              {renderMessageContent(m.content, m.role)}
             </div>
           </div>
         ))}
