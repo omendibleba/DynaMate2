@@ -354,3 +354,76 @@ def record_call(value: str) -> str:
         "routing bug?) — no marker file was written"
     )
     assert marker.read_text().strip() == "hello-regression-test"
+
+
+def test_status_endpoint_survives_concurrent_pool_mutation(client, monkeypatch):
+    """
+    Regression test for GET /api/status racing a concurrent pool mutation
+    (e.g. a chat turn inside register_tool_from_code/assign_tool, running in
+    a different worker thread).
+
+    The natural race window is only a handful of dict-mutation bytecode ops
+    wide — a plain "background thread churns the dict while the foreground
+    hammers get_status() in a loop" stress test was tried first and did not
+    reproduce it reliably even at 2000 iterations with sys.setswitchinterval
+    lowered, because CPython's dict iteration usually completes faster than
+    the OS actually preempts the thread. So this deterministically forces
+    the exact failure instead of hoping for it: pool._tool_registry is
+    swapped for a dict subclass whose keys() pauses after yielding the
+    first key, hands off to a mutator thread that performs a real,
+    synchronous mutation on that same live dict object, waits for it to
+    finish, and only then resumes iterating — which is guaranteed to raise
+    "RuntimeError: dictionary changed size during iteration" on continuation
+    (verified directly against a plain dict/iterator pair before writing
+    this test). get_status() must survive that via its retry loop.
+    """
+    import threading
+
+    from backend.routes.status import get_status
+
+    class _PausingDict(dict):
+        """keys() pauses after the first key so a mutator thread can make a
+        real, guaranteed-visible size change before iteration continues."""
+
+        def __init__(self, *args, on_first_key=None, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._on_first_key = on_first_key
+
+        def keys(self):
+            it = dict.__iter__(self)
+
+            def _paced():
+                first = next(it)
+                yield first
+                if self._on_first_key:
+                    self._on_first_key()
+                yield from it  # continues the SAME live iterator post-mutation
+
+            return _paced()
+
+    pool = client.app.state.pool
+    original_registry = pool._tool_registry
+    ready_to_mutate = threading.Event()
+    mutation_done = threading.Event()
+
+    def on_first_key():
+        ready_to_mutate.set()
+        assert mutation_done.wait(timeout=5), "mutator thread never completed"
+
+    racy_registry = _PausingDict(original_registry, on_first_key=on_first_key)
+
+    def mutator():
+        assert ready_to_mutate.wait(timeout=5), "iteration never reached the checkpoint"
+        racy_registry["_race_injected_tool"] = next(iter(original_registry.values()))
+        mutation_done.set()
+
+    monkeypatch.setattr(pool, "_tool_registry", racy_registry)
+    try:
+        mutator_thread = threading.Thread(target=mutator, daemon=True)
+        mutator_thread.start()
+        result = get_status(pool)  # must not raise — the retry loop must catch it
+        mutator_thread.join(timeout=5)
+    finally:
+        monkeypatch.setattr(pool, "_tool_registry", original_registry)
+
+    assert "_race_injected_tool" in result.registry
