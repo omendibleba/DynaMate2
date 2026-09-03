@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Workflow } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { AlertTriangle } from 'lucide-react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { AgentTracePanel } from './components/AgentTracePanel'
 import { ChatPanel } from './components/ChatPanel'
 import { NavBar, type TabId } from './components/NavBar'
@@ -9,6 +9,10 @@ import { StatusSidebar } from './components/StatusSidebar'
 import { ThreadHistory } from './components/ThreadHistory'
 import { useChatStream } from './hooks/useChatStream'
 import { createThread } from './lib/api'
+
+const AgentGraphPanel = lazy(() =>
+  import('./components/AgentGraphPanel').then((m) => ({ default: m.AgentGraphPanel })),
+)
 
 function App() {
   const [tab, setTab] = useState<TabId>('chat')
@@ -131,9 +135,16 @@ function App() {
       )}
 
       {tab === 'graph' && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-line bg-surface text-ink-faint">
-          <Workflow className="h-8 w-8" />
-          <p className="text-sm">Agent graph coming soon…</p>
+        <div className="flex-1 overflow-hidden">
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-ink-faint">
+                Loading graph…
+              </div>
+            }
+          >
+            <AgentGraphPanel />
+          </Suspense>
         </div>
       )}
     </div>
