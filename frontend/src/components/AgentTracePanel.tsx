@@ -1,5 +1,7 @@
 import { ListTree } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import type { TraceEntry } from '../hooks/useChatStream'
+import { traceNodeColorClasses } from '../lib/traceNodeColor'
 
 interface AgentTracePanelProps {
   trace: TraceEntry[]
@@ -7,6 +9,12 @@ interface AgentTracePanelProps {
 }
 
 export function AgentTracePanel({ trace, isStreaming = false }: AgentTracePanelProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [trace])
+
   return (
     <div className="flex h-full flex-col rounded-2xl border border-line bg-surface shadow-sm">
       <div className="flex items-center gap-2 border-b border-line px-4 py-2.5 text-sm font-semibold text-ink-muted">
@@ -14,13 +22,15 @@ export function AgentTracePanel({ trace, isStreaming = false }: AgentTracePanelP
         <span>Agent Trace</span>
         {isStreaming && <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />}
       </div>
-      <div className="flex-1 overflow-y-auto p-3 font-mono text-xs text-ink-muted">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 font-mono text-xs text-ink-muted">
         {trace.length === 0 ? (
           <p className="text-ink-faint">Routing steps and tool calls will appear here…</p>
         ) : (
           trace.map((t, i) => (
             <div key={i} className="mb-1.5">
-              <span className="mr-1.5 rounded-full bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-800">
+              <span
+                className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${traceNodeColorClasses(t.node)}`}
+              >
                 {t.node}
               </span>
               {t.content}
