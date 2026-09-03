@@ -48,6 +48,10 @@ export function AgentGraphPanel() {
   const viewportRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const panzoomRef = useRef<PanZoom | null>(null)
+  const nodeIndexRef = useRef<NodeIndex>({})
+  useEffect(() => {
+    nodeIndexRef.current = nodeIndex
+  }, [nodeIndex])
 
   useEffect(() => {
     let cancelled = false
@@ -72,6 +76,13 @@ export function AgentGraphPanel() {
   // Set up once — dangerouslySetInnerHTML above only replaces this node's
   // children on re-render, so the panzoom-applied transform (set directly
   // on this same element's style) survives graph content updates.
+  //
+  // Click detection goes through panzoom's own `onClick` option rather
+  // than a plain React onClick on the same element: panzoom's mousedown/
+  // mouseup handling on that element can suppress the browser's own
+  // synthesized 'click' event, but panzoom itself always knows whether a
+  // given mouseup was a genuine click (movement below its own threshold)
+  // vs. the end of a drag, and fires this callback only for the former.
   useEffect(() => {
     if (!contentRef.current) return
     const instance = createPanZoom(contentRef.current, {
@@ -80,6 +91,9 @@ export function AgentGraphPanel() {
       zoomSpeed: 0.065,
       bounds: false,
       smoothScroll: false,
+      onClick: (e) => {
+        setSelectedNode(resolveClickedNode(e.target as Element, nodeIndexRef.current))
+      },
     })
     panzoomRef.current = instance
     return () => {
@@ -101,11 +115,6 @@ export function AgentGraphPanel() {
     if (!instance) return
     instance.moveTo(0, 0)
     instance.zoomAbs(0, 0, 1)
-  }
-
-  function handleGraphClick(e: React.MouseEvent) {
-    const node = resolveClickedNode(e.target as Element, nodeIndex)
-    setSelectedNode(node)
   }
 
   const description = selectedNode
@@ -137,7 +146,6 @@ export function AgentGraphPanel() {
         <div
           ref={contentRef}
           className="h-full w-full origin-top-left cursor-pointer"
-          onClick={handleGraphClick}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
         <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
