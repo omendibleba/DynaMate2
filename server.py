@@ -40,6 +40,10 @@ if __name__ == "__main__":
             "  cd frontend && npm install && npm run build"
         )
 
-    print(f"DynaMate2: serving on http://0.0.0.0:{_PORT} "
-          f"(forward this port to reach it from your browser)", flush=True)
+    print(f"DynaMate2: listening on port {_PORT} (bound to all interfaces).", flush=True)
+    print(f"  Open this in your browser: http://localhost:{_PORT}", flush=True)
+    print(f"  (NOT http://0.0.0.0:{_PORT} — that's a bind address, not something "
+          f"a browser can connect to)", flush=True)
+    print("  On a remote/HPC host, forward the port to your own machine first "
+          "(SSH -L, or VS Code's Ports panel) before that URL will load.", flush=True)
     uvicorn.run("backend.main:app", host="0.0.0.0", port=_PORT)
