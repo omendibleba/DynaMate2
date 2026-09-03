@@ -1,3 +1,4 @@
+import { AlertTriangle, SendHorizontal } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { ChatMessage } from '../hooks/useChatStream'
 
@@ -37,20 +38,18 @@ export function ChatPanel({
   }
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex h-full flex-col rounded-2xl border border-line bg-surface shadow-sm">
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && !isStreaming && (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-ink-faint">
             Describe your task, or use a quick-start action to auto-fill a prompt…
           </p>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
-                m.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
+              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${
+                m.role === 'user' ? 'bg-brand-800 text-white' : 'bg-surface-hover text-ink'
               }`}
             >
               {m.content}
@@ -59,18 +58,18 @@ export function ChatPanel({
         ))}
         {isStreaming && (
           <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <div className="max-w-[85%] rounded-2xl bg-surface-hover px-3.5 py-2 text-sm text-ink-muted">
               …
             </div>
           </div>
         )}
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-            ⚠ {error}
+          <div className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-slate-200 p-3 dark:border-slate-800">
+      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-line p-3">
         <textarea
           value={inputValue}
           onChange={(e) => onInputChange(e.target.value)}
@@ -86,13 +85,14 @@ export function ChatPanel({
               : 'Describe your task, or click a step above to auto-fill…'
           }
           rows={2}
-          className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          className="flex-1 resize-none rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
         />
         <button
           type="submit"
           disabled={!canSubmit}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
+          <SendHorizontal className="h-4 w-4" />
           Send
         </button>
       </form>

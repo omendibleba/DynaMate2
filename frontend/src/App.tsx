@@ -60,7 +60,7 @@ function App() {
   }
 
   return (
-    <div className="mx-auto flex h-screen max-w-6xl flex-col gap-4 bg-canvas p-4">
+    <div className="mx-auto flex h-screen max-w-[1800px] flex-col gap-4 bg-canvas p-4">
       <NavBar tab={tab} onTabChange={setTab} />
 
       {threadInitError && (
@@ -78,23 +78,24 @@ function App() {
       )}
 
       {tab === 'chat' && (
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-4">
-          <div className="flex flex-col gap-4 overflow-hidden md:col-span-3">
-            <div className="flex-1 overflow-hidden">
-              <ChatPanel
-                messages={messages}
-                isStreaming={isStreaming}
-                disabled={!threadId}
-                error={error}
-                onSend={send}
-                inputValue={inputValue}
-                onInputChange={setInputValue}
-              />
-            </div>
-            <AgentTracePanel trace={trace} />
+        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-4">
+          <div className="overflow-hidden lg:col-span-2">
+            <ChatPanel
+              messages={messages}
+              isStreaming={isStreaming}
+              disabled={!threadId}
+              error={error}
+              onSend={send}
+              inputValue={inputValue}
+              onInputChange={setInputValue}
+            />
           </div>
 
-          <div className="flex flex-col gap-4 overflow-y-auto md:col-span-1">
+          <div className="overflow-hidden lg:col-span-1">
+            <AgentTracePanel trace={trace} isStreaming={isStreaming} />
+          </div>
+
+          <div className="flex flex-col gap-4 overflow-y-auto lg:col-span-1">
             <StatusSidebar />
             <ThreadHistory
               threadId={threadId}

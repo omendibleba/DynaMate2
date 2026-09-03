@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Bot, ClipboardList, FileCode, Play } from 'lucide-react'
 import { useState } from 'react'
 import { getQuickstartPrompts } from '../lib/api'
 import { FileUploadZone } from './FileUploadZone'
@@ -9,11 +10,11 @@ interface QuickStartPanelProps {
 
 type TabId = 'prompt' | 'script' | 'llm' | 'run'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'prompt', label: '📋 From Prompt' },
-  { id: 'script', label: '📄 From Script' },
-  { id: 'llm', label: '🤖 From LLM' },
-  { id: 'run', label: '▶ Run Simulations' },
+const TABS: { id: TabId; label: string; icon: typeof ClipboardList }[] = [
+  { id: 'prompt', label: 'From Prompt', icon: ClipboardList },
+  { id: 'script', label: 'From Script', icon: FileCode },
+  { id: 'llm', label: 'From LLM', icon: Bot },
+  { id: 'run', label: 'Run Simulations', icon: Play },
 ]
 
 function StepButton({
@@ -30,7 +31,7 @@ function StepButton({
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-semibold transition ${colorClass}`}
+      className={`w-full rounded-xl border px-3 py-2 text-left text-sm font-semibold transition ${colorClass}`}
     >
       <div>{label}</div>
       <div className="mt-0.5 text-xs font-normal opacity-70">{hint}</div>
@@ -46,26 +47,27 @@ export function QuickStartPanel({ onSelectPrompt }: QuickStartPanelProps) {
   })
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex gap-1 border-b border-slate-200 px-2 pt-2 dark:border-slate-800">
-        {TABS.map((t) => (
+    <div className="rounded-2xl border border-line bg-surface shadow-sm">
+      <div className="flex gap-1 border-b border-line px-2 pt-2">
+        {TABS.map(({ id, label, icon: Icon }) => (
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`rounded-t-lg px-3 py-1.5 text-xs font-semibold transition ${
-              tab === t.id
-                ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex items-center gap-1.5 rounded-t-lg px-3 py-1.5 text-xs font-semibold transition ${
+              tab === id
+                ? 'bg-brand-50 text-brand-800'
+                : 'text-ink-muted hover:text-ink'
             }`}
           >
-            {t.label}
+            <Icon className="h-3.5 w-3.5" />
+            {label}
           </button>
         ))}
       </div>
 
       <div className="p-4">
         {isLoading || !prompts ? (
-          <p className="text-sm text-slate-400">Loading quick-start prompts…</p>
+          <p className="text-sm text-ink-faint">Loading quick-start prompts…</p>
         ) : (
           <>
             {tab === 'prompt' && (
@@ -98,7 +100,7 @@ export function QuickStartPanel({ onSelectPrompt }: QuickStartPanelProps) {
                   <StepButton
                     label="④ Register run_nvt_md from ASE_NVT_PBC.py"
                     hint="Assigns run_nvt_md to mace_md_specialist"
-                    colorClass="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300"
+                    colorClass="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
                     onClick={() => onSelectPrompt(prompts.t3a)}
                   />
                 </div>
@@ -110,10 +112,10 @@ export function QuickStartPanel({ onSelectPrompt }: QuickStartPanelProps) {
                 <StepButton
                   label="⑤ Write & register plot_nvt_trajectory"
                   hint="LLM writes, registers, and assigns the tool"
-                  colorClass="border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300"
+                  colorClass="border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300"
                   onClick={() => onSelectPrompt(prompts.t4a)}
                 />
-                <pre className="col-span-2 max-h-40 overflow-auto rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                <pre className="col-span-2 max-h-40 overflow-auto rounded-xl bg-surface-hover p-2 font-mono text-xs text-ink-muted">
                   {prompts.t4a}
                 </pre>
               </div>
@@ -124,19 +126,19 @@ export function QuickStartPanel({ onSelectPrompt }: QuickStartPanelProps) {
                 <StepButton
                   label="T2 — Build NaCl + Water Box"
                   hint="1 NaCl pair + 267 H₂O · 20 Å periodic box"
-                  colorClass="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-300"
+                  colorClass="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                   onClick={() => onSelectPrompt(prompts.t2)}
                 />
                 <StepButton
                   label="T3 — Run NVT MD (10 steps, 300 K)"
                   hint="MACE-MP-0b3 · ASE · nacl_water_box.xyz"
-                  colorClass="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-300"
+                  colorClass="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                   onClick={() => onSelectPrompt(prompts.t3b)}
                 />
                 <StepButton
                   label="T4 — Plot NVT Trajectory"
                   hint="Energy & temperature from nvt_nacl_water.traj"
-                  colorClass="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-300"
+                  colorClass="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                   onClick={() => onSelectPrompt(prompts.t4b)}
                 />
               </div>
