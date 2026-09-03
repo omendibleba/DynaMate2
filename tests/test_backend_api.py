@@ -239,3 +239,37 @@ def test_register_two_tools_at_once_no_parallel_tool_call_race(tmp_path, monkeyp
 
         registry = scratch_client.get("/api/status").json()["registry"]
         assert set(registry) == {"smiles_to_xyz", "packmol_build_system"}
+
+
+def test_enhancer_preserves_original_message_for_multistep_prompts(client):
+    """
+    Regression test for dynamate/prompt_enhancer.py's Rule 3 (multi-step
+    requests). The system prompt used to instruct the LLM to REPLACE the
+    whole message with just "First use <agent> with <tool_X>, then
+    <tool_Y>." — discarding every concrete detail (file paths, box size,
+    molecule counts) from the original request. The downstream specialist
+    agent then had nothing to act on and would just bounce back to the
+    supervisor in a loop instead of calling a tool (burning tokens on the
+    growing conversation history each hop, which is what actually
+    triggered the 429 rate-limit error this bug was discovered from).
+
+    Fix: Rule 3 now appends the routing hint after the original message,
+    matching how Rule 2 already handled single-tool routing. Asserts the
+    enhanced output still contains the original request's file paths.
+    """
+    enhancer = client.app.state.enhancer
+    enhanced = enhancer.enhance(PROMPTS["t2"])
+
+    # Every concrete detail from the original T2 prompt must survive.
+    for original_line in [
+        "water.xyz",
+        "na.xyz",
+        "cl.xyz",
+        "20.0 Angstrom",
+        "267 water molecules",
+        "nacl_water_box.xyz",
+    ]:
+        assert original_line in enhanced, (
+            f"enhancer dropped {original_line!r} from the original message "
+            f"— got: {enhanced!r}"
+        )

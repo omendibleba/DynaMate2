@@ -66,8 +66,13 @@ All required input files are already present at the provided paths. \
 Call <tool_name> directly without any preliminary file-preparation steps \
 (no packmol_build_system, no download_mace_model, no smiles_to_xyz)."
 3. If the user explicitly requests a multi-step sequence (e.g. "build a \
-box AND run a simulation"), chain them:
+box AND run a simulation"), keep the original message fully intact — \
+including every file path, parameter, and value it contains — and \
+append this chaining instruction after it, on a new line:
    "First use <agent_A> with <tool_X>, then <tool_Y>."
+   Do NOT replace the original message with just this instruction; the \
+downstream agent needs the original message's concrete details to call \
+the tools correctly.
 4. If no tool description matches the user's request, return the original \
 query unchanged (no routing instruction).
 5. Do NOT invent agent or tool names that are not listed below.
