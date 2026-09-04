@@ -53,3 +53,7 @@ ui_state/tools/__pycache__/
 frontend/node_modules/
 frontend/dist/
 backend/__pycache__/
+
+# ── Container runtime data (run.sh's default persistent data dir) ────────────
+dynamate-data/
+*.sif
