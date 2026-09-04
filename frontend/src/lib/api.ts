@@ -77,6 +77,26 @@ export async function uploadTool(file: File): Promise<UploadResponse> {
   return resp.json() as Promise<UploadResponse>
 }
 
+async function patchJSON(path: string, body: unknown): Promise<void> {
+  const resp = await fetch(path, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!resp.ok) {
+    const parsed = await resp.json().catch(() => ({ detail: resp.statusText }))
+    throw new Error(parsed.detail ?? `PATCH ${path} -> ${resp.status}`)
+  }
+}
+
+export function updateAgentPrompt(name: string, systemPrompt: string): Promise<void> {
+  return patchJSON(`/api/agents/${encodeURIComponent(name)}/prompt`, { system_prompt: systemPrompt })
+}
+
+export function updateToolDescription(name: string, description: string): Promise<void> {
+  return patchJSON(`/api/tools/${encodeURIComponent(name)}/description`, { description })
+}
+
 /**
  * Streams a chat turn as an async generator of parsed SSE events. Browser
  * EventSource can't send a POST body, so this reads the response body as a

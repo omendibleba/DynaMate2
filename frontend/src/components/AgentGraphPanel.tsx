@@ -164,7 +164,12 @@ export function AgentGraphPanel() {
           </ZoomButton>
         </div>
         {selectedNode && (
-          <GraphNodeDetail node={selectedNode} description={description} onClose={() => setSelectedNode(null)} />
+          <GraphNodeDetail
+            key={`${selectedNode.kind}:${selectedNode.name}`}
+            node={selectedNode}
+            description={description}
+            onClose={() => setSelectedNode(null)}
+          />
         )}
       </div>
     </div>
