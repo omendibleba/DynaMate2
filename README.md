@@ -14,10 +14,9 @@ Originally developed as a research framework for molecular simulation workflows 
 
 ## Table of Contents
 
+- [Run DynaMate2](#run-dynamate2)
 - [Architecture Overview](#architecture-overview)
 - [Project Structure](#project-structure)
-- [Requirements](#requirements)
-- [Setup](#setup)
 - [Tutorial](#tutorial)
 - [Usage](#usage)
   - [Interactive CLI](#interactive-cli)
@@ -25,11 +24,50 @@ Originally developed as a research framework for molecular simulation workflows 
   - [Gradio Web UI (legacy)](#gradio-web-ui-legacy)
   - [Single Prompt](#single-prompt)
   - [Using as a Python Library](#using-as-a-python-library)
+- [Local Development Setup](#local-development-setup)
 - [How Persistence Works](#how-persistence-works)
 - [Core Concepts](#core-concepts)
 - [Adding Tools and Agents](#adding-tools-and-agents)
 - [Running Tests](#running-tests)
 - [Limitations](#limitations)
+
+---
+
+## Run DynaMate2
+
+The fastest way to get the UI running locally — one command, on a regular machine (Docker) or
+an HPC cluster (Apptainer/Singularity — no Docker daemon needed):
+
+```bash
+export OPENAI_API_KEY=sk-...
+./run.sh
+```
+
+Open `http://localhost:8888` once it prints ready. No conda environment, no separate PACKMOL
+install, no matching a CUDA driver by hand — everything DynaMate2 needs (PACKMOL, the MACE
+CLI tools, the full Python/LLM stack) is already baked into the image `run.sh` pulls from
+`ghcr.io/omendibleba/dynamate2`.
+
+Don't want to clone the repo first? `run.sh` is self-contained:
+```bash
+curl -fsSL https://raw.githubusercontent.com/omendibleba/DynaMate2/main/run.sh | bash
+```
+
+| What | How |
+|---|---|
+| Different port | `DYNAMATE_PORT=9000 ./run.sh` |
+| Persistent data | `./dynamate-data/` by default (chat/tool state + tutorial files) — override with `DYNAMATE_DATA_DIR` |
+| API key | `OPENAI_API_KEY` env var, or a `.env` file next to `run.sh` |
+| On a remote HPC node | Forward the port to your own machine first (`ssh -L 8888:localhost:8888 <host>`, or your site's remote-desktop tooling) before `http://localhost:8888` will load |
+
+**GPU / HPC scheduler use:** `run.sh` always runs the lightweight CPU-only image by default,
+so it starts fast and needs no GPU just to open the UI.
+- `./run.sh --gpu` runs the CUDA-enabled image directly (needs an NVIDIA GPU + driver on
+  whatever machine you run it on).
+- On an HPC cluster, the running (CPU) session can instead submit a scheduler job that runs
+  the GPU image on an allocated GPU node — see `docker/job-templates/` for adaptable SGE and
+  Slurm starting points (queue names and resource-request syntax are site-specific, so these
+  are templates to edit, not drop-in scripts).
 
 ---
 
@@ -79,14 +117,23 @@ Supervisor                    ← routes tasks to the right agent
 
 ```
 DynaMate2/
+├── run.sh                         # One-command launcher (Docker or Apptainer/Singularity)
+├── Dockerfile                     # CPU (default) + GPU image variants, one file, build ARGs
 ├── main.py                        # CLI entry point
 ├── server.py                      # React UI production entry point
 ├── app.py                         # Gradio web UI (legacy — gradio-ui-legacy branch)
 ├── .env                           # OPENAI_API_KEY (not committed)
 ├── .env_sample                    # Template for .env
-├── environment.yml                # Recommended conda environment
-├── environment_pinned.yml         # Fully-pinned conda environment
-├── requirements.txt               # pip requirements
+├── environment.yml                # Recommended conda environment (local dev)
+├── environment_pinned.yml         # Fully-pinned conda environment (also the GPU image's env)
+├── requirements.txt               # pip requirements (local dev)
+│
+├── docker/
+│   ├── environment.cpu.yml        # CPU image's conda environment
+│   └── job-templates/             # Adaptable SGE/Slurm scripts to run the GPU image as a job
+│
+├── .github/workflows/
+│   └── docker-publish.yml         # Builds + publishes both images to GHCR on push
 │
 ├── backend/                       # FastAPI backend for the React UI
 │   ├── main.py                    # App + lifespan (builds the pool once at startup)
@@ -141,77 +188,6 @@ DynaMate2/
         ├── dmf_30.xyz / dmf_30.traj / dmf_30.png
         ├── water.xyz / nacl_water_box.xyz
         └── end_to_end_test/       # Full NaCl-water workflow outputs
-```
-
----
-
-## Requirements
-
-- Python 3.10+
-- An OpenAI API key
-- A CUDA-capable GPU (strongly recommended for MACE simulations; CPU fallback is very slow)
-- [PACKMOL](http://leandro.iqm.unicamp.br/m3g/packmol/home.shtml) binary on your `PATH` (required by the `packmol_build_system` tool)
-
-**Python packages** (see `environment.yml` for full list):
-
-| Category | Packages |
-|---|---|
-| LLM stack | `langchain`, `langchain-openai`, `langchain-community`, `langgraph`, `langgraph-supervisor`, `langgraph-checkpoint-sqlite` |
-| Molecular simulation | `ase`, `mace-torch`, `rdkit` |
-| Numerics / plotting | `numpy`, `matplotlib` |
-| Web UI | `gradio` |
-| Notebook | `jupyter`, `ipykernel` |
-
----
-
-## Setup
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/omendibleba/DynaMate2.git
-cd DynaMate2
-```
-
-### 2. Create the conda environment
-
-**Recommended (flexible, top-level packages):**
-```bash
-conda env create -f environment.yml
-conda activate dynamate
-```
-
-**Alternative (fully pinned, maximum reproducibility):**
-```bash
-conda env create -f environment_pinned.yml
-conda activate dynamate
-```
-
-Or with pip only:
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Install PACKMOL
-
-PACKMOL is an external binary (not pip-installable) required by the `packmol_build_system` tool:
-
-```bash
-conda install -c conda-forge packmol   # easiest
-# or download from: http://leandro.iqm.unicamp.br/m3g/packmol/home.shtml
-```
-
-### 4. Set your API key
-
-```bash
-cp .env_sample .env
-# edit .env and add:  OPENAI_API_KEY=sk-...
-```
-
-### 5. Verify the installation
-
-```bash
-python -c "from dynamate import AgentPool; print('OK')"
 ```
 
 ---
@@ -273,13 +249,15 @@ feedback. Same functionality as before (quick-start actions mirroring the
 tutorial notebook, streaming chat, tool upload, thread history, live agent/tool
 status) behind a more usable interface.
 
-**Production (single command):**
+**Recommended: [`./run.sh`](#run-dynamate2)** — no local build step, no conda environment.
+
+**Without a container** (after [Local Development Setup](#local-development-setup)):
 ```bash
 cd frontend && npm install && npm run build && cd ..
 python server.py
 ```
 Starts at `http://localhost:8888`. State is saved to `ui_state/` and restored
-between sessions, same as before.
+between sessions, same as `run.sh`.
 
 **Development (hot-reload on both sides):**
 ```bash
@@ -375,6 +353,29 @@ for chunk in pool.supervisor.stream(
 ):
     pretty_print_messages(chunk, last_message=True)
 ```
+
+---
+
+## Local Development Setup
+
+Only needed if you're developing DynaMate2 itself, or genuinely can't use a container runtime
+— **prefer [`./run.sh`](#run-dynamate2)** otherwise. The manual path has real complications
+worth knowing before you start: `environment_pinned.yml` pins 260+ conda packages including a
+full CUDA stack, PACKMOL is an external binary (not pip-installable), and matching a working
+GPU driver / CUDA version by hand is its own project — the container sidesteps all of this.
+
+```bash
+git clone https://github.com/omendibleba/DynaMate2.git
+cd DynaMate2
+conda env create -f environment.yml   # or environment_pinned.yml for exact reproducibility
+conda activate dynamate
+conda install -c conda-forge packmol  # not pip-installable
+cp .env_sample .env                   # then edit in your OPENAI_API_KEY
+python -c "from dynamate import AgentPool; print('OK')"   # sanity check
+```
+
+(`pip install -r requirements.txt` works too if you'd rather not use conda, minus the PACKMOL
+binary — you'd need to build or download that separately either way.)
 
 ---
 
@@ -655,11 +656,16 @@ All capabilities must come from assigned tools.
 
 ### Simulation Limitations
 
-**MACE requires a GPU.**
-Running MACE simulations on CPU is technically possible but orders of magnitude slower. A CUDA-capable GPU is strongly recommended.
+**MACE is much faster on a GPU.**
+Running MACE simulations on CPU (the default `./run.sh` image) is technically possible but
+orders of magnitude slower. Use `./run.sh --gpu`, or submit a scheduler job running the `:gpu`
+image (see [Run DynaMate2](#run-dynamate2)), for real workloads.
 
-**PACKMOL must be installed separately.**
-The `packmol_build_system` tool calls the `packmol` binary from the system PATH. If PACKMOL is not installed, that tool will fail at runtime.
+**PACKMOL must be on `PATH`.**
+The `packmol_build_system` tool calls the `packmol` binary from the system PATH — already
+bundled in both container images; if you're on the [manual local setup](#local-development-setup)
+instead, install it yourself (`conda install -c conda-forge packmol`) or that tool will fail
+at runtime.
 
 ### Persistence Limitations
 
