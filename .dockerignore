@@ -1,0 +1,15 @@
+.git
+.github
+frontend/node_modules
+frontend/dist
+ui_state
+tutorials/tutorial_state
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv
+.env
+*.sif
+dynamate-data

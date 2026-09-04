@@ -53,6 +53,8 @@ def download_mace_model(model_name: str,
 
     if convert_lmp:
         print(f"Converting '{model_name}' to LAMMPS format.")
-        os.system(f"python ~/mace/mace/cli/create_lammps_model.py {out_path}")
+        mace_repo_dir = os.environ.get("MACE_REPO_DIR", os.path.expanduser("~/mace"))
+        cli_script = os.path.join(mace_repo_dir, "mace", "cli", "create_lammps_model.py")
+        os.system(f"python {cli_script} {out_path}")
         return out_path + '-lammps.pt'
     return out_path

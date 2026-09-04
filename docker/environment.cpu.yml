@@ -1,0 +1,33 @@
+# DynaMate2 — CPU-only runtime environment for the default container image.
+#
+# Deliberately excludes torch/mace-torch (installed separately in the
+# Dockerfile from the CPU wheel index, so mace-torch's dependency resolution
+# doesn't pull a CUDA build) and dev-only extras not needed to serve the UI
+# (gradio — the legacy Gradio UI isn't part of this image, jupyter/ipykernel,
+# pytest). See docker/environment.gpu.yml's counterpart: environment_pinned.yml
+# at the repo root, used as-is for the GPU image.
+
+name: dynamate2
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - packmol
+  - pip
+  - pip:
+    - langchain>=0.3.23
+    - langchain-openai>=0.3.12
+    - langchain-community>=0.3.16
+    - langgraph>=0.6.7
+    - langgraph-supervisor>=0.0.29
+    - langgraph-checkpoint-sqlite>=3.0.3
+    - python-dotenv>=1.0.0
+    - fastapi>=0.115
+    - uvicorn[standard]>=0.30
+    - sse-starlette>=2.1
+    - python-multipart>=0.0.9
+    - httpx>=0.27
+    - ase>=3.26.0
+    - rdkit>=2024.9.6
+    - numpy>=1.25.0
+    - matplotlib>=3.8.0
