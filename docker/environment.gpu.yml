@@ -30,6 +30,7 @@ dependencies:
     - langchain>=0.3.23
     - langchain-openai>=0.3.12
     - langchain-community>=0.3.16
+    - langchain-experimental>=0.3.4
     - langgraph>=0.6.7
     - langgraph-supervisor>=0.0.29
     - langgraph-checkpoint-sqlite>=3.0.3

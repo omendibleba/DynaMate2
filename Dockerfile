@@ -61,6 +61,14 @@ ENV MACE_REPO_DIR=/opt/mace
 
 ENV PATH=/opt/conda/envs/dynamate2/bin:$PATH
 
+# Apptainer (unlike Docker) shares the host's $HOME into the container by
+# default, and Python auto-adds ~/.local/lib/pythonX.Y/site-packages to
+# sys.path — so whatever the host user has `pip install --user`'d can
+# silently mix into or shadow this image's own pinned packages. Disabling
+# user-site packages makes the image's environment the only one that's
+# ever seen, regardless of who runs it or how.
+ENV PYTHONNOUSERSITE=1
+
 COPY . .
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 

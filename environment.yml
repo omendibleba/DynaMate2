@@ -26,6 +26,7 @@ dependencies:
     - langchain>=0.3
     - langchain-openai>=0.3
     - langchain-community>=0.3
+    - langchain-experimental>=0.3.4  # ShellTool()'s default bash backend needs this
     - langgraph>=0.6
     - langgraph-supervisor>=0.0.29
     - langgraph-checkpoint-sqlite>=3.0
