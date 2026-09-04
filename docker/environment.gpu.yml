@@ -7,6 +7,13 @@
 # (not imported anywhere in the codebase), so it's dropped here rather than
 # vendored — if a future dependency genuinely needs it, it'll need a real
 # install source (a git URL or private index), not just a version pin.
+#
+# Also: torch==2.5.0+cu121 -> torch==2.5.0. The "+cu121" local-version suffix
+# only exists on PyTorch's own separate wheel index (download.pytorch.org),
+# which this env doesn't point at — plain PyPI's torch==2.5.0 already ships
+# CUDA 12.1 support via the bundled nvidia-*-cu12 runtime wheels pinned
+# alongside it right here, so the plain version resolves to an equivalent
+# GPU-capable build without needing a second index.
 name: dynamate
 channels:
   - conda-forge
@@ -380,7 +387,7 @@ dependencies:
       - sympy==1.13.1
       - tenacity==9.1.2
       - tiktoken==0.12.0
-      - torch==2.5.0+cu121
+      - torch==2.5.0
       - torch-ema==0.3
       - torchmetrics==1.8.2
       - tqdm==4.68.1
