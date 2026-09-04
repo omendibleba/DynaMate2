@@ -8,9 +8,10 @@ uploaded .py tool script to ui_state/uploads/ and returns a ready-to-send
 
 import os
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
-from backend.schemas import UploadResponse
+from backend.deps import get_pool
+from backend.schemas import UpdateResponse, UpdateToolDescriptionRequest, UploadResponse
 from backend.state import UPLOADS_DIR, ensure_dirs
 
 router = APIRouter(tags=["tools"])
@@ -33,3 +34,20 @@ async def upload_tool(file: UploadFile) -> UploadResponse:
         "Update any existing tools with the same name."
     )
     return UploadResponse(path=dest, prompt=prompt)
+
+
+@router.patch("/tools/{name}/description", response_model=UpdateResponse)
+def update_tool_description(
+    name: str, req: UpdateToolDescriptionRequest, pool=Depends(get_pool)
+) -> UpdateResponse:
+    """
+    Session-only: the tool's in-memory description is edited and every
+    agent holding it rebuilt (see pool.update_tool_description), but a
+    restart re-registers the tool from its saved source file and
+    re-derives the description from the function's docstring again — this
+    does not rewrite that source.
+    """
+    result = pool.update_tool_description(name, req.description)
+    if "not in registry" in result:
+        raise HTTPException(status_code=404, detail=result)
+    return UpdateResponse(message=result)

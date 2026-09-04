@@ -44,6 +44,18 @@ class UploadResponse(BaseModel):
     prompt: str
 
 
+class UpdateAgentPromptRequest(BaseModel):
+    system_prompt: str
+
+
+class UpdateToolDescriptionRequest(BaseModel):
+    description: str
+
+
+class UpdateResponse(BaseModel):
+    message: str
+
+
 class QuickstartPrompts(BaseModel):
     t1a: str
     t1b: str

@@ -215,6 +215,20 @@ class PersistentAgentPoolWithSupervisor(AgentPoolWithSupervisor):
             self._autosave()
         return result
 
+    def update_agent_prompt(self, name: str, new_prompt: str) -> str:
+        """
+        Persists for dynamic agents (name in self._dynamic_agent_names) —
+        _autosave() already reads entry["system_prompt"] for those, updated
+        by the base class before this returns. Static agents (shell_agent,
+        compute_agent) aren't in dynamic_agents at all, so an edit to one of
+        those is session-only: build_system() always reconstructs them fresh
+        from their hardcoded prompts on the next restart, same as today.
+        """
+        result = super().update_agent_prompt(name, new_prompt)
+        if not self._loading:
+            self._autosave()
+        return result
+
     def remove_tool(self, tool_name: str) -> str:
         result = super().remove_tool(tool_name)
         if "not in registry" not in result:

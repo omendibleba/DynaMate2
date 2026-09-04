@@ -24,7 +24,7 @@ from dynamate import (
 )
 
 from backend import state
-from backend.routes import chat, health, quickstart, status, threads, tools
+from backend.routes import agents, chat, health, quickstart, status, threads, tools
 
 dotenv.load_dotenv()
 
@@ -115,6 +115,7 @@ app.include_router(threads.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(quickstart.router, prefix="/api")
 app.include_router(tools.router, prefix="/api")
+app.include_router(agents.router, prefix="/api")
 
 # ── Production static frontend ─────────────────────────────────────────────────
 # Mounted last (after every /api/* router) so API routes always take

@@ -542,3 +542,78 @@ def greet(name: str) -> str:
         "fixed today for tool updates"
     )
     assert bound_after is pool._tool_registry["greet"]
+
+
+def test_update_agent_prompt_rebuilds_agent_and_supervisor():
+    """
+    Editing an agent's prompt (Agent Graph tab's click-to-inspect ->
+    click-to-edit) must rebuild both the agent (so it actually runs with
+    the new prompt) and the supervisor (whose routing prompt re-reads
+    every agent's system_prompt on each rebuild — see
+    dynamate/pool.py's _rebuild_supervisor) — the exact assign_tool-class
+    staleness gap, one level higher: the agent's own prompt this time.
+    """
+    pool, model = _minimal_pool()
+    pool.add_agent("greeter", model, base_tools=[], system_prompt="You are a greeter.")
+
+    agent_before = pool._agents["greeter"]["agent"]
+    supervisor_before = pool.supervisor
+
+    result = pool.update_agent_prompt("greeter", "You are a very enthusiastic greeter.")
+    assert "Updated" in result
+
+    assert pool._agents["greeter"]["system_prompt"] == "You are a very enthusiastic greeter."
+    assert pool._agents["greeter"]["base_system_prompt"] == "You are a very enthusiastic greeter."
+    assert pool._agents["greeter"]["agent"] is not agent_before, (
+        "update_agent_prompt did not rebuild the agent's compiled graph"
+    )
+    assert pool.supervisor is not supervisor_before, (
+        "update_agent_prompt did not rebuild the supervisor — it would keep "
+        "routing to the pre-edit agent object"
+    )
+
+
+def test_update_agent_prompt_unknown_agent():
+    pool, _ = _minimal_pool()
+    result = pool.update_agent_prompt("nonexistent", "new prompt")
+    assert "not found" in result
+
+
+def test_update_tool_description_propagates_to_assigned_agent():
+    """
+    Editing a tool's description (Agent Graph tab's click-to-edit) mutates
+    the SAME StructuredTool object referenced by every agent holding it
+    (assign_tool copies the reference, not a copy of the tool) — but the
+    agent's compiled graph (and the supervisor) still needs rebuilding so
+    the LLM is actually re-bound with the new description.
+    """
+    pool, model = _minimal_pool()
+    source = '''
+def greet(name: str) -> str:
+    """Say hello."""
+    return f"Hello, {name}!"
+'''
+    pool.register_tool_from_code(source)
+    pool.add_agent("greeter", model, base_tools=[], system_prompt="You are a greeter.")
+    pool.assign_tool("greet", "greeter")
+
+    agent_before = pool._agents["greeter"]["agent"]
+    supervisor_before = pool.supervisor
+    tool_obj = pool._tool_registry["greet"]
+
+    result = pool.update_tool_description("greet", "Say an enthusiastic hello.")
+    assert "Updated" in result
+    assert "greeter" in result
+
+    assert tool_obj.description == "Say an enthusiastic hello."
+    bound = next(t for t in pool._agents["greeter"]["extra_tools"] if t.name == "greet")
+    assert bound is tool_obj, "description must be mutated in place, not replaced"
+    assert bound.description == "Say an enthusiastic hello."
+    assert pool._agents["greeter"]["agent"] is not agent_before
+    assert pool.supervisor is not supervisor_before
+
+
+def test_update_tool_description_unknown_tool():
+    pool, _ = _minimal_pool()
+    result = pool.update_tool_description("nonexistent", "new description")
+    assert "not in registry" in result

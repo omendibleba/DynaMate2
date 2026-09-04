@@ -14,6 +14,9 @@ Rebuild cost summary
   pool.register_tool_from_code(...) → rebuilds any agent already holding an
                                        updated (same-name, different-source)
                                        tool, + rebuilds supervisor if any were
+  pool.update_agent_prompt(...)   → rebuilds that agent  +  rebuilds supervisor
+  pool.update_tool_description(...) → rebuilds every agent holding that tool
+                                       +  rebuilds supervisor if any were
   pool.supervisor                 → property; always returns the current compiled graph
 
   On AgentPoolWithSupervisor (and its PersistentAgentPoolWithSupervisor
@@ -241,6 +244,49 @@ class AgentPool:
         self._rebuild_agent(agent_name)
         return f"Assigned '{tool_name}' to '{agent_name}' and rebuilt it."
 
+    def update_agent_prompt(self, name: str, new_prompt: str) -> str:
+        """
+        Replace an agent's base system prompt and rebuild it.
+
+        Updates both "system_prompt" (user-visible, persisted) and
+        "base_system_prompt" (the source _rebuild_agent reads to compute the
+        effective prompt) — the edited text becomes the new source of truth,
+        exactly like the value originally passed to add_agent().
+        """
+        if name not in self._agents:
+            return f"Agent '{name}' not found."
+        entry = self._agents[name]
+        entry["system_prompt"] = new_prompt
+        entry["base_system_prompt"] = new_prompt
+        self._rebuild_agent(name)
+        return f"Updated prompt for '{name}' and rebuilt it."
+
+    def update_tool_description(self, tool_name: str, new_description: str) -> str:
+        """
+        Replace a registered tool's description in place and rebuild every
+        agent currently holding it (base or assigned).
+
+        Mutates the SAME StructuredTool object stored in _tool_registry —
+        every agent's base_tools/extra_tools list holds a reference to that
+        same object (assign_tool copies the reference, not a copy of the
+        tool), so no list-replacement is needed, just a rebuild so
+        create_react_agent re-binds the tool with its new description.
+        PromptEnhancer._build_pool_context() reads tool.description live on
+        every enhance() call, so it picks up the change with no extra work.
+        """
+        if tool_name not in self._tool_registry:
+            return f"Tool '{tool_name}' not in registry."
+        self._tool_registry[tool_name].description = new_description
+        affected = []
+        for name, entry in self._agents.items():
+            if any(t.name == tool_name for t in entry["base_tools"] + entry["extra_tools"]):
+                self._rebuild_agent(name)
+                affected.append(name)
+        msg = f"Updated description for '{tool_name}'."
+        if affected:
+            msg += f" Rebuilt: {affected}."
+        return msg
+
     def list_agent_tools(self, agent_name: str) -> str:
         if agent_name not in self._agents:
             return f"Agent '{agent_name}' not found."
@@ -422,6 +468,23 @@ class AgentPoolWithSupervisor(AgentPool):
         override is required — remove_tool has the identical staleness gap)."""
         result = super().remove_tool(tool_name)
         if "Unassigned from and rebuilt" in result:
+            self._rebuild_supervisor()
+        return result
+
+    def update_agent_prompt(self, name: str, new_prompt: str) -> str:
+        """Update an agent's prompt and rebuild the supervisor — same
+        staleness gap as assign_tool: without this, the supervisor keeps
+        routing to the pre-edit compiled agent object."""
+        result = super().update_agent_prompt(name, new_prompt)
+        if "Updated" in result:
+            self._rebuild_supervisor()
+        return result
+
+    def update_tool_description(self, tool_name: str, new_description: str) -> str:
+        """Update a tool's description and rebuild the supervisor if any
+        agent holding it was rebuilt (same staleness gap as assign_tool)."""
+        result = super().update_tool_description(tool_name, new_description)
+        if "Rebuilt" in result:
             self._rebuild_supervisor()
         return result
 
