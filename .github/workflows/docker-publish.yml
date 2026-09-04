@@ -59,5 +59,4 @@ jobs:
             ENV_FILE=${{ matrix.env_file }}
             IMAGE_VARIANT=${{ matrix.variant }}
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha,scope=${{ matrix.variant }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
+          no-cache: true
