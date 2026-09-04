@@ -3,9 +3,10 @@
 #   CPU (default, low barrier — runs anywhere, no GPU needed to open the UI):
 #     docker build -t dynamate2:cpu .
 #
-#   GPU (CUDA/MACE compute stack — environment_pinned.yml, used for actual
-#   simulation work, not for just serving the UI):
-#     docker build --build-arg ENV_FILE=environment_pinned.yml \
+#   GPU (CUDA/MACE compute stack — docker/environment.gpu.yml, a build-safe
+#   derivative of environment_pinned.yml, used for actual simulation work,
+#   not for just serving the UI):
+#     docker build --build-arg ENV_FILE=docker/environment.gpu.yml \
 #                  --build-arg IMAGE_VARIANT=gpu -t dynamate2:gpu .
 #
 # Runtime config is all via env vars at `docker run` time (see run.sh):

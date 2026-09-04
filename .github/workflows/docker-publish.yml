@@ -16,13 +16,14 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - variant: cpu
             env_file: docker/environment.cpu.yml
             latest_tag: latest
           - variant: gpu
-            env_file: environment_pinned.yml
+            env_file: docker/environment.gpu.yml
             latest_tag: gpu
     steps:
       - name: Checkout

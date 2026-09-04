@@ -125,11 +125,13 @@ DynaMate2/
 ├── .env                           # OPENAI_API_KEY (not committed)
 ├── .env_sample                    # Template for .env
 ├── environment.yml                # Recommended conda environment (local dev)
-├── environment_pinned.yml         # Fully-pinned conda environment (also the GPU image's env)
+├── environment_pinned.yml         # Fully-pinned conda environment (local dev, exact reproduction)
 ├── requirements.txt               # pip requirements (local dev)
 │
 ├── docker/
 │   ├── environment.cpu.yml        # CPU image's conda environment
+│   ├── environment.gpu.yml        # GPU image's env (derived from environment_pinned.yml —
+│   │                               #   drops one unpublished, DynaMate2-unused pip package)
 │   └── job-templates/             # Adaptable SGE/Slurm scripts to run the GPU image as a job
 │
 ├── .github/workflows/
