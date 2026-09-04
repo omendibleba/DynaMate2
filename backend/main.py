@@ -77,7 +77,14 @@ def build_system() -> tuple:
         name="shell_agent",
         model=model,
         base_tools=[ShellTool()],
-        system_prompt="You are a shell agent. Execute shell commands to answer requests.",
+        system_prompt=(
+            "You are a shell agent. Execute shell commands to answer requests. "
+            "For GPU-heavy MACE work (this process may be running in the lightweight "
+            "CPU-only container), you can submit an HPC scheduler job (qsub/sbatch) "
+            "that runs the dynamate2:gpu container image on a GPU node — see the "
+            "templates in docker/job-templates/ (gpu_job.sge.sh, gpu_job.slurm.sh) "
+            "and adapt one rather than writing a submission script from scratch."
+        ),
         _is_dynamic=False,
     )
     pool.add_agent(
