@@ -3,9 +3,8 @@
 #   CPU (default, low barrier — runs anywhere, no GPU needed to open the UI):
 #     docker build -t dynamate2:cpu .
 #
-#   GPU (CUDA/MACE compute stack — docker/environment.gpu.yml, a build-safe
-#   derivative of environment_pinned.yml, used for actual simulation work,
-#   not for just serving the UI):
+#   GPU (CUDA/MACE compute stack — docker/environment.gpu.yml, used for
+#   actual simulation work, not for just serving the UI):
 #     docker build --build-arg ENV_FILE=docker/environment.gpu.yml \
 #                  --build-arg IMAGE_VARIANT=gpu -t dynamate2:gpu .
 #
@@ -27,6 +26,8 @@ ARG ENV_FILE=docker/environment.cpu.yml
 ARG IMAGE_VARIANT=cpu
 ARG TORCH_VERSION=2.5.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+ARG GPU_TORCH_VERSION=2.5.0+cu121
+ARG GPU_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu121
 
 WORKDIR /app
 
@@ -36,12 +37,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends git wget \
 COPY ${ENV_FILE} /tmp/environment.yml
 RUN mamba env create -n dynamate2 -f /tmp/environment.yml && mamba clean -afy
 
-# CPU images install torch from the CPU wheel index *before* mace-torch, so
-# mace-torch's own dependency resolution finds torch already satisfied
-# instead of pulling a CUDA build. GPU images skip this entirely —
-# environment_pinned.yml already pins torch==2.5.0+cu121 directly.
+# Both variants install torch as a separate step, from the wheel index
+# matching their variant, *before* mace-torch — so mace-torch's own
+# dependency resolution finds torch already satisfied instead of pulling a
+# different build (a CPU-only wheel would otherwise get pulled for the CPU
+# image; a mismatched CUDA build could get pulled for the GPU image).
+# Neither docker/environment.*.yml file includes torch/mace-torch itself,
+# for exactly this reason.
 RUN if [ "$IMAGE_VARIANT" = "cpu" ]; then \
       mamba run -n dynamate2 pip install --no-cache-dir torch==${TORCH_VERSION} --index-url ${TORCH_INDEX_URL} && \
+      mamba run -n dynamate2 pip install --no-cache-dir "mace-torch>=0.3.16"; \
+    elif [ "$IMAGE_VARIANT" = "gpu" ]; then \
+      mamba run -n dynamate2 pip install --no-cache-dir torch==${GPU_TORCH_VERSION} --index-url ${GPU_TORCH_INDEX_URL} && \
       mamba run -n dynamate2 pip install --no-cache-dir "mace-torch>=0.3.16"; \
     fi
 

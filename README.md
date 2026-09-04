@@ -130,8 +130,9 @@ DynaMate2/
 │
 ├── docker/
 │   ├── environment.cpu.yml        # CPU image's conda environment
-│   ├── environment.gpu.yml        # GPU image's env (derived from environment_pinned.yml —
-│   │                               #   drops one unpublished, DynaMate2-unused pip package)
+│   ├── environment.gpu.yml        # GPU image's env — same flexible deps as the CPU one;
+│   │                               #   torch is installed separately in the Dockerfile from
+│   │                               #   PyTorch's cu121 wheel index instead of the CPU index
 │   └── job-templates/             # Adaptable SGE/Slurm scripts to run the GPU image as a job
 │
 ├── .github/workflows/
