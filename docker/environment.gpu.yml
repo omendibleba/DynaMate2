@@ -24,6 +24,12 @@
 # so leaving them unpinned lets pip resolve whatever versions torch's own
 # metadata actually requires — guaranteed self-consistent, since it's
 # torch's own dependency graph rather than a separately-captured snapshot.
+#
+# Same pattern, next layer: packaging==26.2 also dropped — it conflicted
+# with what cuequivariance-jax==0.7.0 and langchain-core==0.3.83 each
+# themselves require. Expect this class of fix to recur a few more times
+# across this 100+-entry pip set; each one is being fixed as CI actually
+# surfaces it, not guessed at preemptively.
 name: dynamate
 channels:
   - conda-forge
@@ -360,7 +366,6 @@ dependencies:
       - opt-einsum-fx==0.1.4
       - orjson==3.11.7
       - ormsgpack==1.12.2
-      - packaging==26.2
       - pip==26.1.2
       - platformdirs==4.10.0
       - prettytable==3.16.0
