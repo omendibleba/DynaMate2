@@ -120,6 +120,16 @@ if [ "$RUNTIME" = "docker" ]; then
 
 else
   BIN="$RUNTIME"
+  # Unprivileged Apptainer builds the local SIF from the pulled OCI image
+  # via proot, which needs ptrace — blocked outright by some HPC kernel
+  # configs (a known, longstanding kernel bug:
+  # https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1202161), causing
+  # "proot error: ptrace(TRACEME): Operation not permitted" even though
+  # the image pull itself succeeds. This is Apptainer's own documented
+  # workaround (it prints this exact suggestion in that failure) — scoped
+  # to how apptainer converts the OCI image locally, not the container's
+  # own runtime sandbox.
+  export PROOT_NO_SECCOMP=1
   BINDS="$DATA_DIR/ui_state:/app/ui_state,$DATA_DIR/tutorials:/app/tutorials"
   for sched_dir in /opt/sge /opt/slurm /usr/local/slurm; do
     if [ -d "$sched_dir" ]; then
