@@ -39,7 +39,7 @@ function App() {
     initThread()
   }
 
-  const { messages, trace, isStreaming, error, send, reset } = useChatStream(
+  const { messages, liveTrace, isStreaming, error, send, reset } = useChatStream(
     threadId ?? '',
     () => {
       queryClient.invalidateQueries({ queryKey: ['status'] })
@@ -92,7 +92,7 @@ function App() {
           </div>
 
           <div className="overflow-hidden lg:col-span-1">
-            <AgentTracePanel trace={trace} isStreaming={isStreaming} />
+            <AgentTracePanel messages={messages} liveTrace={liveTrace} isStreaming={isStreaming} />
           </div>
 
           <div className="flex flex-col gap-4 overflow-y-auto lg:col-span-1">

@@ -1,20 +1,26 @@
 import { useCallback, useRef, useState } from 'react'
 import { streamChat } from '../lib/api'
 
-export interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
 export interface TraceEntry {
   node: string
   content: string
   isAi: boolean
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+  /** Only set on assistant messages — the full trace for the turn that
+   *  produced this reply, so older turns stay inspectable (not just the
+   *  most recent one). */
+  trace?: TraceEntry[]
+}
+
 export function useChatStream(threadId: string, onSent?: () => void, onTrace?: () => void) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [trace, setTrace] = useState<TraceEntry[]>([])
+  // The in-flight turn's trace, live during streaming — not yet attached
+  // to a message (that happens once the final answer arrives, below).
+  const [liveTrace, setLiveTrace] = useState<TraceEntry[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -24,7 +30,7 @@ export function useChatStream(threadId: string, onSent?: () => void, onTrace?: (
       if (!message.trim() || isStreaming) return
 
       setMessages((prev) => [...prev, { role: 'user', content: message }])
-      setTrace([])
+      setLiveTrace([])
       setError(null)
       setIsStreaming(true)
 
@@ -32,10 +38,13 @@ export function useChatStream(threadId: string, onSent?: () => void, onTrace?: (
       abortRef.current = controller
 
       let finalAnswer = ''
+      const turnTrace: TraceEntry[] = []
       try {
         for await (const event of streamChat(threadId, message, controller.signal)) {
           if (event.type === 'trace') {
-            setTrace((prev) => [...prev, { node: event.node, content: event.content, isAi: event.is_ai }])
+            const entry: TraceEntry = { node: event.node, content: event.content, isAi: event.is_ai }
+            turnTrace.push(entry)
+            setLiveTrace((prev) => [...prev, entry])
             // Mirrors app.py's respond(), which recomputed and yielded the
             // status text on every streamed chunk — keeps the Agents & Tools
             // sidebar live during multi-step turns (tool/agent registration)
@@ -55,7 +64,7 @@ export function useChatStream(threadId: string, onSent?: () => void, onTrace?: (
         setIsStreaming(false)
         abortRef.current = null
         if (finalAnswer) {
-          setMessages((prev) => [...prev, { role: 'assistant', content: finalAnswer }])
+          setMessages((prev) => [...prev, { role: 'assistant', content: finalAnswer, trace: turnTrace }])
         }
         onSent?.()
       }
@@ -66,10 +75,10 @@ export function useChatStream(threadId: string, onSent?: () => void, onTrace?: (
   const reset = useCallback(() => {
     abortRef.current?.abort()
     setMessages([])
-    setTrace([])
+    setLiveTrace([])
     setError(null)
     setIsStreaming(false)
   }, [])
 
-  return { messages, trace, isStreaming, error, send, reset }
+  return { messages, liveTrace, isStreaming, error, send, reset }
 }
