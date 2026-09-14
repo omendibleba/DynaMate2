@@ -47,6 +47,23 @@ if [ "${DYNAMATE_GPU:-0}" = "1" ]; then GPU=1; fi
 if [ "$GPU" = "1" ]; then TAG="gpu"; else TAG="latest"; fi
 IMAGE="${IMAGE_BASE}:${TAG}"
 
+# ── Optional: pre-built local .sif (Apptainer/Singularity only) ────────────────
+# Some HPC clusters restrict ptrace on compute nodes, which unprivileged
+# Apptainer needs to pull/build a docker:// image the first time it runs one —
+# see the README's "Running --gpu directly on a GPU compute node" section. The
+# workaround is building the .sif once on the login node, then running that
+# local file directly instead of docker://, which needs no pull/build at all.
+# Picked up automatically with zero flags if present at
+# containers/dynamate2_<gpu|cpu>.sif next to this script (e.g. a symlink to a
+# shared build); override with DYNAMATE_SIF_PATH to point anywhere else (e.g.
+# straight at a shared file, no local symlink needed). Ignored entirely under
+# Docker, which has no such restriction.
+DEFAULT_SIF="$(dirname "$0")/containers/dynamate2_${TAG/latest/cpu}.sif"
+SIF_PATH="${DYNAMATE_SIF_PATH:-}"
+if [ -z "$SIF_PATH" ] && [ -e "$DEFAULT_SIF" ]; then
+  SIF_PATH="$DEFAULT_SIF"
+fi
+
 # ── API key ──────────────────────────────────────────────────────────────────
 # .env follows python-dotenv's tolerant "KEY = value" format (spaces allowed
 # around '='), which plain `source` chokes on ("command not found") — an
@@ -88,7 +105,11 @@ else
   echo "error: no container runtime found. Install Docker, or use Apptainer/Singularity (common on HPC clusters)." >&2
   exit 1
 fi
-echo "DynaMate2: using $RUNTIME, image $IMAGE"
+if [ "$RUNTIME" != "docker" ] && [ -n "$SIF_PATH" ]; then
+  echo "DynaMate2: using $RUNTIME, local image $SIF_PATH (skipping the docker:// pull/build step)"
+else
+  echo "DynaMate2: using $RUNTIME, image $IMAGE"
+fi
 
 cleanup() {
   if [ "$RUNTIME" = "docker" ]; then
@@ -140,9 +161,11 @@ else
     BINDS="$BINDS,$DYNAMATE_EXTRA_BINDS"
   fi
 
+  if [ -n "$SIF_PATH" ]; then SOURCE="$SIF_PATH"; else SOURCE="docker://${IMAGE}"; fi
+
   if [ "$SEED_NEEDED" = "1" ]; then
     echo "Seeding $DATA_DIR/tutorials from the image (first run)..."
-    "$BIN" exec --bind "$DATA_DIR/tutorials:/dest" "docker://${IMAGE}" \
+    "$BIN" exec --bind "$DATA_DIR/tutorials:/dest" "$SOURCE" \
       sh -c "cp -rn /app/tutorials/. /dest/ 2>/dev/null || true" || true
   fi
 
@@ -158,5 +181,5 @@ else
 
   echo "Open this in your browser once it's ready: http://localhost:${PORT}"
   echo "(On a remote HPC login/compute node, forward the port to your own machine first — e.g. ssh -L ${PORT}:localhost:${PORT} <host>.)"
-  "$BIN" run "${NV_FLAG[@]}" --bind "$BINDS" "docker://${IMAGE}"
+  "$BIN" run "${NV_FLAG[@]}" --bind "$BINDS" "$SOURCE"
 fi

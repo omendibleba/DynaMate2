@@ -15,6 +15,7 @@ Originally developed as a research framework for molecular simulation workflows 
 ## Table of Contents
 
 - [Run DynaMate2](#run-dynamate2)
+- [Multi-user data: private vs. shared state](#multi-user-data-private-vs-shared-state)
 - [Architecture Overview](#architecture-overview)
 - [Project Structure](#project-structure)
 - [Tutorial](#tutorial)
@@ -73,46 +74,33 @@ so it starts fast and needs no GPU just to open the UI.
 restrict `ptrace` on compute nodes (`/proc/sys/kernel/yama/ptrace_scope` = `2`, a kernel-wide
 admin policy) but not on the CPU-only login/front-end node. Unprivileged Apptainer needs
 `ptrace` (via `proot`) to convert a `docker://` image into a local `.sif` the first time it
-runs one — so `./run.sh --gpu` (or any `apptainer .../exec docker://...` command) run
-*directly on such a compute node* fails with `proot error: ptrace(TRACEME): Operation not
-permitted`, even though the exact same command works fine on the login node. Confirmed on
-Notre Dame's CRC cluster: `ptrace_scope=2` on GPU compute nodes, `=0` on the login node
-(`crcfe01`). Check `cat /proc/sys/kernel/yama/ptrace_scope` on your compute node — `2` means
-you need the 2-step workaround below; `0` or `1` means `./run.sh --gpu` just works directly.
+runs one — so `./run.sh --gpu` run *directly on such a compute node* fails with
+`proot error: ptrace(TRACEME): Operation not permitted`, even though the exact same command
+works fine on the login node. Confirmed on Notre Dame's CRC cluster: `ptrace_scope=2` on GPU
+compute nodes, `=0` on the login node (`crcfe01`/`crcfe02`) — CRC support confirmed (Sep
+2026) this is a kernel-level restriction not fixable short of a kernel update, and the
+supported path is pre-building on the login node first. Check
+`cat /proc/sys/kernel/yama/ptrace_scope` on your compute node — `2` means you need the
+workaround below; `0` or `1` means `./run.sh --gpu` just works directly, nothing else needed.
 
-Workaround — pre-build the image into a `.sif` file on the login node (where the pull/build
-step works), then run *that local file* on the GPU node (pure local execution, no pull/build
-needed there at all):
+Workaround — pre-build the image into a `.sif` file on the login node once, then run
+`run.sh` as normal on the GPU node: it **auto-detects** a `.sif` at
+`containers/dynamate2_<gpu|cpu>.sif` next to itself and uses it instead of `docker://`, so no
+pull/build happens there at all — no ptrace needed, and no other flags to remember:
 
 ```bash
-# 1) On the CPU-only login/front-end node:
+# 1) On the CPU-only login/front-end node, once:
 cd /path/to/DynaMate2       # this repo
 mkdir -p containers
 apptainer pull containers/dynamate2_gpu.sif docker://ghcr.io/omendibleba/dynamate2:gpu
 #   (swap :gpu / dynamate2_gpu.sif for :latest / dynamate2_cpu.sif for the CPU image)
 
-# 2) Get onto a GPU compute node the usual way for your cluster
-#    (interactive allocation, or an interactive job — same as any other GPU job).
+# 2) Get onto a GPU compute node the usual way for your cluster.
 
-# 3) On the GPU node, run the pre-built .sif directly:
+# 3) On the GPU node — same one-command launch as always:
 cd /path/to/DynaMate2
-export OPENAI_API_KEY=sk-...
-export PROOT_NO_SECCOMP=1
-DATA_DIR="$(pwd)/dynamate-data"
-mkdir -p "$DATA_DIR/ui_state" "$DATA_DIR/tutorials"
-
-# First run only — seed tutorials/ from the image (bind mounts replace, not merge):
-if [ -z "$(ls -A "$DATA_DIR/tutorials" 2>/dev/null)" ]; then
-  apptainer exec --bind "$DATA_DIR/tutorials:/dest" containers/dynamate2_gpu.sif \
-    sh -c "cp -rn /app/tutorials/. /dest/ 2>/dev/null || true"
-fi
-
-export APPTAINERENV_OPENAI_API_KEY="$OPENAI_API_KEY"
-export APPTAINERENV_DYNAMATE_PORT=8888
-export APPTAINERENV_DYNAMATE_STATE_DIR=/app/ui_state
-apptainer run --nv \
-  --bind "$DATA_DIR/ui_state:/app/ui_state,$DATA_DIR/tutorials:/app/tutorials" \
-  containers/dynamate2_gpu.sif
+export OPENAI_API_KEY=sk-...   # or rely on a .env file next to run.sh, as usual
+./run.sh --gpu
 
 # 4) From your own machine: ssh -L 8888:localhost:8888 <host>, then open
 #    http://localhost:8888
@@ -122,6 +110,63 @@ The `.sif` file (several GB) is already covered by `.gitignore` — no need to e
 manually. Re-run step 1 whenever a new image is published (`docker-publish.yml` tags
 `:gpu`/`:latest` on every push to `main`) to pick up the update; the local `.sif` doesn't
 update itself.
+
+**Sharing one `.sif` across a group instead of everyone pulling their own** — recommended if
+your AFS/home quota is tight: Apptainer's *build cache* (`~/.apptainer/cache`, separate from
+the final `.sif` destination) can consume several GB per pull and defaults to your home
+directory regardless of where the `.sif` itself ends up — redirect it too, or every user who
+pulls their own hits the same quota risk:
+
+```bash
+# Build once, into shared storage, with the build cache redirected off AFS home too:
+export APPTAINER_CACHEDIR=/path/to/shared/storage/containers/.apptainer-cache
+mkdir -p "$APPTAINER_CACHEDIR"
+apptainer pull /path/to/shared/storage/containers/dynamate2_gpu.sif \
+  docker://ghcr.io/omendibleba/dynamate2:gpu
+```
+
+Each user then either symlinks it into their own clone (so the auto-detection above just
+works, no flags):
+```bash
+ln -sf /path/to/shared/storage/containers/dynamate2_gpu.sif containers/dynamate2_gpu.sif
+```
+or points at it directly without touching their own clone at all:
+```bash
+DYNAMATE_SIF_PATH=/path/to/shared/storage/containers/dynamate2_gpu.sif ./run.sh --gpu
+```
+
+---
+
+## Multi-user data: private vs. shared state
+
+`run.sh`'s persistent data directory (`./dynamate-data` by default, override with
+`DYNAMATE_DATA_DIR`) holds everything a session accumulates: registered tools
+(`ui_state/tools/*.py`), dynamically created agents and tool assignments
+(`ui_state/pool_state.json`), and full conversation history (`ui_state/conversations.db`).
+
+- **Each user keeps their own tools/agents/conversations (recommended default for multiple
+  people on the same cluster)**: give each user their own data directory — nothing to change
+  in the app itself, just point `DYNAMATE_DATA_DIR` somewhere per-user before launching, e.g.:
+  ```bash
+  export DYNAMATE_DATA_DIR=/path/to/shared/storage/dynamate-data-$(whoami)
+  ./run.sh --gpu
+  ```
+- **Multiple users sharing one pool of tools/agents (everyone can use tools/agents anyone
+  else added)**: pointing everyone's `DYNAMATE_DATA_DIR` at the *same* directory works, but
+  **only safely if people take turns, not if two users run the UI at the same time.**
+  `pool_state.json` is written as a full snapshot of one process's in-memory state on every
+  change, with no locking or merging — if two separate `run.sh` instances (each its own
+  container, each its own in-memory pool) are both live against the same data directory, the
+  second one to save silently overwrites whatever the first one added, since it never saw it.
+  Conversation history (`conversations.db`, SQLite, one row per chat thread) doesn't have
+  this problem — different users' threads don't collide — so that part *is* safe to share
+  concurrently on its own.
+  **True concurrent shared tool/agent state would need real code changes** (e.g. locking +
+  merge-on-save in `PoolStore`, or one shared backend process serving every user's browser
+  instead of one container per user) — not implemented yet; ask if this is actually needed
+  before relying on simultaneous shared use.
+
+See [How Persistence Works](#how-persistence-works) for the full mechanism this builds on.
 
 ---
 
