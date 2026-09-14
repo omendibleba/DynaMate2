@@ -14,6 +14,7 @@ Originally developed as a research framework for molecular simulation workflows 
 
 ## Table of Contents
 
+- [Quick Start (CRC users — shared container already built)](#quick-start-crc-users--shared-container-already-built)
 - [Run DynaMate2](#run-dynamate2)
   - [Connecting from Windows (PowerShell)](#connecting-from-windows-powershell)
 - [Multi-user data: private vs. shared state](#multi-user-data-private-vs-shared-state)
@@ -32,6 +33,58 @@ Originally developed as a research framework for molecular simulation workflows 
 - [Adding Tools and Agents](#adding-tools-and-agents)
 - [Running Tests](#running-tests)
 - [Limitations](#limitations)
+
+---
+
+## Quick Start (CRC users — shared container already built)
+
+If you're joining this group on Notre Dame's CRC cluster, someone has already built and
+shared a working container — you don't need to build, pull, or download anything yourself.
+(If that's not you — e.g. a fresh cluster, or you want your own copy of the image — skip to
+[Run DynaMate2](#run-dynamate2) below instead.)
+
+**One-time setup:**
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/omendibleba/DynaMate2.git
+   cd DynaMate2
+   ```
+2. Add your OpenAI API key:
+   ```bash
+   cp .env_sample .env
+   # then edit .env and set OPENAI_API_KEY = 'sk-...'
+   ```
+   (Ask whoever manages this deployment whether to use a shared lab key or your own.)
+3. Point your clone at the already-built shared container — this just links to it, no
+   download happens:
+   ```bash
+   mkdir -p containers
+   ln -sf /groups/ycolon/Orlando/containers/dynamate2_gpu.sif containers/dynamate2_gpu.sif
+   ln -sf /groups/ycolon/Orlando/containers/dynamate2_cpu.sif containers/dynamate2_cpu.sif
+   ```
+
+**Every time you want to use the UI:**
+
+4. Get onto a GPU compute node the usual way for this cluster.
+5. Launch:
+   ```bash
+   cd DynaMate2
+   ./run.sh --gpu      # or ./run.sh for the lightweight CPU-only UI (no GPU needed)
+   ```
+6. From your own machine, open a tunnel and browse. In PowerShell:
+   ```powershell
+   ssh -L 8888:localhost:8888 <your-username>@<gpu-node-hostname>
+   ```
+   (or jump through the login node if direct SSH to compute nodes isn't allowed for you —
+   see [Connecting from Windows (PowerShell)](#connecting-from-windows-powershell) for both
+   forms.) Then open `http://localhost:8888` in your browser.
+
+That's it. Since everyone clones their own copy in step 1, each person automatically gets
+their own private tools/agents/conversation history — see
+[Multi-user data](#multi-user-data-private-vs-shared-state) if you actually want to share
+that instead. `containers/*.sif` is gitignored, so the symlinks from step 3 are yours to
+keep — no risk of accidentally committing or affecting anyone else's clone.
 
 ---
 
