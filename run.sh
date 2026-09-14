@@ -163,9 +163,18 @@ else
 
   if [ -n "$SIF_PATH" ]; then SOURCE="$SIF_PATH"; else SOURCE="docker://${IMAGE}"; fi
 
+  # Unlike Docker, Apptainer starts the container in the HOST's current
+  # working directory by default, not the image's own WORKDIR (/app here) --
+  # so running this from inside an actual repo clone (which has its own
+  # unbuilt server.py/frontend/ at the same relative paths as the image)
+  # silently runs the HOST's server.py instead of the image's, since `python
+  # server.py`'s bare relative filename resolves against cwd. Symptom seen:
+  # "frontend/dist/ not found" even though the image has it. --pwd forces
+  # the container's cwd to match the image's WORKDIR regardless of where
+  # you launched from.
   if [ "$SEED_NEEDED" = "1" ]; then
     echo "Seeding $DATA_DIR/tutorials from the image (first run)..."
-    "$BIN" exec --bind "$DATA_DIR/tutorials:/dest" "$SOURCE" \
+    "$BIN" exec --pwd /app --bind "$DATA_DIR/tutorials:/dest" "$SOURCE" \
       sh -c "cp -rn /app/tutorials/. /dest/ 2>/dev/null || true" || true
   fi
 
@@ -181,5 +190,5 @@ else
 
   echo "Open this in your browser once it's ready: http://localhost:${PORT}"
   echo "(On a remote HPC login/compute node, forward the port to your own machine first — e.g. ssh -L ${PORT}:localhost:${PORT} <host>.)"
-  "$BIN" run "${NV_FLAG[@]}" --bind "$BINDS" "$SOURCE"
+  "$BIN" run "${NV_FLAG[@]}" --pwd /app --bind "$BINDS" "$SOURCE"
 fi
