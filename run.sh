@@ -151,6 +151,22 @@ else
   # to how apptainer converts the OCI image locally, not the container's
   # own runtime sandbox.
   export PROOT_NO_SECCOMP=1
+
+  # Apptainer inherits the invoking shell's environment by default (unlike
+  # Docker) -- intentional and needed elsewhere (scheduler vars like
+  # $SGE_ROOT come along for free, see the file header) -- but a few
+  # specific host-set vars are filesystem PATHS that only make sense on the
+  # host, and silently break things if they leak into the container instead
+  # of being ignored. SSL_CERT_FILE is the confirmed case: some users' own
+  # conda `base` environments export it pointing at their own host cert
+  # bundle, and httpx inside the container then fails outright trying to
+  # load that (now nonexistent) path ("FileNotFoundError" from
+  # ssl.create_default_context) instead of falling back to the image's own
+  # perfectly good default trust store. Unset just this narrow family
+  # (not a blanket --cleanenv, which would also drop the scheduler vars
+  # above) so the image's own defaults are used instead.
+  unset SSL_CERT_FILE SSL_CERT_DIR REQUESTS_CA_BUNDLE CURL_CA_BUNDLE
+
   BINDS="$DATA_DIR/ui_state:/app/ui_state,$DATA_DIR/tutorials:/app/tutorials"
   for sched_dir in /opt/sge /opt/slurm /usr/local/slurm; do
     if [ -d "$sched_dir" ]; then
