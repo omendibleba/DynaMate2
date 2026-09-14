@@ -15,6 +15,7 @@ Originally developed as a research framework for molecular simulation workflows 
 ## Table of Contents
 
 - [Run DynaMate2](#run-dynamate2)
+  - [Connecting from Windows (PowerShell)](#connecting-from-windows-powershell)
 - [Multi-user data: private vs. shared state](#multi-user-data-private-vs-shared-state)
 - [Architecture Overview](#architecture-overview)
 - [Project Structure](#project-structure)
@@ -59,7 +60,36 @@ curl -fsSL https://raw.githubusercontent.com/omendibleba/DynaMate2/main/run.sh |
 | Different port | `DYNAMATE_PORT=9000 ./run.sh` |
 | Persistent data | `./dynamate-data/` by default (chat/tool state + tutorial files) — override with `DYNAMATE_DATA_DIR` |
 | API key | `OPENAI_API_KEY` env var, or a `.env` file next to `run.sh` |
-| On a remote HPC node | Forward the port to your own machine first (`ssh -L 8888:localhost:8888 <host>`, or your site's remote-desktop tooling) before `http://localhost:8888` will load |
+| On a remote HPC node | Forward the port to your own machine first — see [Connecting from Windows (PowerShell)](#connecting-from-windows-powershell) below, or your site's remote-desktop tooling — before `http://localhost:8888` will load |
+
+### Connecting from Windows (PowerShell)
+
+DynaMate2's port is only reachable from the node it's actually running on — from your own
+Windows machine, `http://localhost:8888` won't load until you open an SSH tunnel to that
+node first. Windows 10/11 ships an OpenSSH client usable directly from PowerShell, no extra
+install needed.
+
+1. **On the remote side**: start DynaMate2 as usual (`./run.sh` or `./run.sh --gpu`) and
+   note which node it's actually running on (your terminal prompt, or `hostname`).
+2. **On your own machine, in PowerShell** — pick whichever matches how you normally reach
+   this cluster:
+   ```powershell
+   # If you can SSH directly to the node running DynaMate2:
+   ssh -L 8888:localhost:8888 <your-username>@<node-hostname>
+
+   # If your site only allows direct SSH to a login node, which can itself reach the
+   # compute node (common on HPC clusters — e.g. Notre Dame's CRC: login crcfe01/crcfe02,
+   # compute nodes like qa-a10-032.crc.nd.edu), forward through it by naming the compute
+   # node as the middle segment instead of localhost:
+   ssh -L 8888:<compute-node-hostname>:8888 <your-username>@<login-node-hostname>
+   ```
+   Using a different port (`DYNAMATE_PORT=...`)? Replace every `8888` above with that port,
+   consistently. Leave this PowerShell window open for as long as you want the UI reachable
+   — closing it (or losing the connection) closes the tunnel.
+3. **Open your browser** (on your own machine) to `http://localhost:8888`.
+
+(VS Code's Remote-SSH/Remote Tunnel extensions do the same port-forwarding automatically
+through their Ports panel, if you'd rather not manage a separate terminal.)
 
 **GPU / HPC scheduler use:** `run.sh` always runs the lightweight CPU-only image by default,
 so it starts fast and needs no GPU just to open the UI.
@@ -102,14 +132,28 @@ cd /path/to/DynaMate2
 export OPENAI_API_KEY=sk-...   # or rely on a .env file next to run.sh, as usual
 ./run.sh --gpu
 
-# 4) From your own machine: ssh -L 8888:localhost:8888 <host>, then open
-#    http://localhost:8888
+# 4) From your own machine, forward the port and open http://localhost:8888 --
+#    see "Connecting from Windows (PowerShell)" above.
 ```
 
 The `.sif` file (several GB) is already covered by `.gitignore` — no need to exclude it
 manually. Re-run step 1 whenever a new image is published (`docker-publish.yml` tags
 `:gpu`/`:latest` on every push to `main`) to pick up the update; the local `.sif` doesn't
 update itself.
+
+<details>
+<summary>Why this needs no other Apptainer flags (technical note, not required reading)</summary>
+
+Unlike Docker, Apptainer starts a container in the *host's* current working directory by
+default rather than the image's own `WORKDIR` — running `run.sh` from inside an actual repo
+clone (which has its own unbuilt `server.py`/`frontend/` at the same relative paths as the
+image) would otherwise silently run the *host's* `server.py` instead of the image's, since
+`python server.py`'s bare filename resolves against whatever directory the process started
+in. `run.sh` already passes `--pwd /app` to work around this — nothing to do here, just
+documented in case a stray `frontend/dist/ not found` error ever reappears despite the image
+clearly having one.
+
+</details>
 
 **Sharing one `.sif` across a group instead of everyone pulling their own** — recommended if
 your AFS/home quota is tight: Apptainer's *build cache* (`~/.apptainer/cache`, separate from

@@ -30,6 +30,20 @@ IMAGE="ghcr.io/omendibleba/dynamate2:gpu"
 # `sbatch --export=OPENAI_API_KEY` or hardcode it in this script for
 # automated runs.
 
+# Some clusters restrict ptrace on compute nodes, which unprivileged
+# Apptainer needs to pull/build a docker:// image the first time it runs
+# one — this job would then fail with "proot error: ptrace(TRACEME):
+# Operation not permitted" even though the identical command works on the
+# login node. See ../../README.md's "Running --gpu directly on a GPU
+# compute node" section. Workaround: pre-build the image into a .sif on
+# the login node once (`apptainer pull containers/dynamate2_gpu.sif
+# docker://ghcr.io/omendibleba/dynamate2:gpu`), then this picks it up
+# automatically below — no pull/build happens inside the job at all.
+SOURCE="docker://${IMAGE}"
+if [ -e "containers/dynamate2_gpu.sif" ]; then
+  SOURCE="containers/dynamate2_gpu.sif"
+fi
+
 # Replace this with the actual command — a tutorials/ script, or any other
 # GPU-dependent step. "$@" forwards whatever sbatch was called with.
-apptainer exec --nv "docker://${IMAGE}" "$@"
+apptainer exec --nv --pwd /app "$SOURCE" "$@"
