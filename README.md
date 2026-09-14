@@ -69,6 +69,60 @@ so it starts fast and needs no GPU just to open the UI.
   Slurm starting points (queue names and resource-request syntax are site-specific, so these
   are templates to edit, not drop-in scripts).
 
+**Running `--gpu` directly on a GPU compute node (not via a submitted job)?** Some clusters
+restrict `ptrace` on compute nodes (`/proc/sys/kernel/yama/ptrace_scope` = `2`, a kernel-wide
+admin policy) but not on the CPU-only login/front-end node. Unprivileged Apptainer needs
+`ptrace` (via `proot`) to convert a `docker://` image into a local `.sif` the first time it
+runs one — so `./run.sh --gpu` (or any `apptainer .../exec docker://...` command) run
+*directly on such a compute node* fails with `proot error: ptrace(TRACEME): Operation not
+permitted`, even though the exact same command works fine on the login node. Confirmed on
+Notre Dame's CRC cluster: `ptrace_scope=2` on GPU compute nodes, `=0` on the login node
+(`crcfe01`). Check `cat /proc/sys/kernel/yama/ptrace_scope` on your compute node — `2` means
+you need the 2-step workaround below; `0` or `1` means `./run.sh --gpu` just works directly.
+
+Workaround — pre-build the image into a `.sif` file on the login node (where the pull/build
+step works), then run *that local file* on the GPU node (pure local execution, no pull/build
+needed there at all):
+
+```bash
+# 1) On the CPU-only login/front-end node:
+cd /path/to/DynaMate2       # this repo
+mkdir -p containers
+apptainer pull containers/dynamate2_gpu.sif docker://ghcr.io/omendibleba/dynamate2:gpu
+#   (swap :gpu / dynamate2_gpu.sif for :latest / dynamate2_cpu.sif for the CPU image)
+
+# 2) Get onto a GPU compute node the usual way for your cluster
+#    (interactive allocation, or an interactive job — same as any other GPU job).
+
+# 3) On the GPU node, run the pre-built .sif directly:
+cd /path/to/DynaMate2
+export OPENAI_API_KEY=sk-...
+export PROOT_NO_SECCOMP=1
+DATA_DIR="$(pwd)/dynamate-data"
+mkdir -p "$DATA_DIR/ui_state" "$DATA_DIR/tutorials"
+
+# First run only — seed tutorials/ from the image (bind mounts replace, not merge):
+if [ -z "$(ls -A "$DATA_DIR/tutorials" 2>/dev/null)" ]; then
+  apptainer exec --bind "$DATA_DIR/tutorials:/dest" containers/dynamate2_gpu.sif \
+    sh -c "cp -rn /app/tutorials/. /dest/ 2>/dev/null || true"
+fi
+
+export APPTAINERENV_OPENAI_API_KEY="$OPENAI_API_KEY"
+export APPTAINERENV_DYNAMATE_PORT=8888
+export APPTAINERENV_DYNAMATE_STATE_DIR=/app/ui_state
+apptainer run --nv \
+  --bind "$DATA_DIR/ui_state:/app/ui_state,$DATA_DIR/tutorials:/app/tutorials" \
+  containers/dynamate2_gpu.sif
+
+# 4) From your own machine: ssh -L 8888:localhost:8888 <host>, then open
+#    http://localhost:8888
+```
+
+The `.sif` file (several GB) is already covered by `.gitignore` — no need to exclude it
+manually. Re-run step 1 whenever a new image is published (`docker-publish.yml` tags
+`:gpu`/`:latest` on every push to `main`) to pick up the update; the local `.sif` doesn't
+update itself.
+
 ---
 
 ## Architecture Overview
