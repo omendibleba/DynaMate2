@@ -78,7 +78,8 @@ PROMPT_T3A = (
 PROMPT_T3B = (
     "Please run a short NVT molecular dynamics simulation using ASE. "
     "(use the run_nvt_md tool from the mace_md_specialist ) "
-    f"Use the MACE model at {_tut('models/mace-mp-0b3-medium.model')}, "
+    "Use the MACE polar foundation model 'polar-1-m' (downloaded/cached automatically, "
+    "no local model file needed), "
     f"the structure file {_tut('nacl_water_box.xyz')}, "
     "a box size of 20.0 Angstrom, "
     "a temperature of 300 K, and 10 steps. "

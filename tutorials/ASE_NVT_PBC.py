@@ -1,9 +1,9 @@
 def run_nvt_md(
-    model_path: str,
     structure_file: str,
     box_size: float,
     temperature_K: float,
     n_steps: int,
+    model_name: str = "polar-1-m",
     output_traj: str = "nvt.traj",
     timestep_fs: float = 0.5,
     friction: float = 0.01,
@@ -11,17 +11,22 @@ def run_nvt_md(
     log_interval: int = 10,
     log_file: str = "nvt.log",
     device: str = "cuda",
+    default_dtype: str = "float64",
+    charge: int = 0,
+    spin: int = 1,
+    external_field=(0.0, 0.0, 0.0),
 ) -> str:
     """
-    Run an NVT molecular dynamics simulation using the Langevin thermostat using a MACE calculator.
+    Run an NVT molecular dynamics simulation using the Langevin thermostat using a MACE polar calculator.
 
     Parameters
     ----------
-    model_path     : str   -- path to the MACE .model or -lammps.pt file
     structure_file : str   -- path to the input structure (XYZ or extxyz)
     box_size       : float -- size of the cubic simulation box in Angstroms
     temperature_K  : float -- target temperature in Kelvin
     n_steps        : int   -- number of MD steps to run
+    model_name     : str   -- name of the MACE polar foundation model to use (e.g. 'polar-1-m');
+                               downloaded and cached automatically, no local model file needed
     output_traj    : str   -- path for the output ASE trajectory file
     timestep_fs    : float -- MD timestep in femtoseconds (default 0.5)
     friction       : float -- Langevin friction coefficient in 1/fs (default 0.01)
@@ -29,6 +34,10 @@ def run_nvt_md(
     log_interval   : int   -- write log every N steps (default 10)
     log_file       : str   -- path for the MDLogger output file
     device         : str   -- compute device: 'cuda' or 'cpu'
+    default_dtype  : str   -- 'float64' (default, more precise) or 'float32' (faster MD)
+    charge         : int   -- total system charge, set on atoms.info before the calculator runs
+    spin           : int   -- spin multiplicity, set on atoms.info before the calculator runs
+    external_field : sequence of 3 floats -- external field vector, set on atoms.info
 
     Returns
     -------
@@ -42,7 +51,7 @@ def run_nvt_md(
     from ase.md import MDLogger
     from ase.md.langevin import Langevin
     from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-    from mace.calculators import MACECalculator
+    from mace.calculators import mace_polar
 
     os.makedirs(os.path.dirname(os.path.abspath(output_traj)), exist_ok=True)
     os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)
@@ -52,8 +61,12 @@ def run_nvt_md(
     atoms.set_pbc([True, True, True])
     atoms.set_cell([box_size, box_size, box_size])
 
-    # Attach MACE calculator
-    calculator = MACECalculator(model_path=model_path, device=device)
+    # Attach MACE polar calculator -- a named foundation model, downloaded
+    # and cached automatically, no local .model file needed.
+    calculator = mace_polar(model=model_name, device=device, default_dtype=default_dtype)
+    atoms.info["charge"] = charge
+    atoms.info["spin"] = spin
+    atoms.info["external_field"] = list(external_field)
     atoms.calc = calculator
 
     # Initialise velocities from Maxwell-Boltzmann distribution
@@ -102,8 +115,8 @@ def run_nvt_md(
 if __name__ == "__main__":
     import os
 
-    # ── Edit these paths before running ───────────────────────────────────────
-    MODEL_PATH     = os.path.join(os.path.dirname(__file__), "models", "mace-mp-0b3-medium.model")
+    # ── Edit these paths/values before running ─────────────────────────────────
+    MODEL_NAME     = "polar-1-m"
     STRUCTURE_FILE = os.path.join(os.path.dirname(__file__), "nacl_water_box.xyz")
     BOX_SIZE       = 20.0   # Å  (matches the box built by packmol in T2.1)
     TEMPERATURE_K  = 300.0  # K
@@ -113,7 +126,7 @@ if __name__ == "__main__":
     DEVICE         = "cuda"
     # ──────────────────────────────────────────────────────────────────────────
 
-    print(f"Model          : {MODEL_PATH}")
+    print(f"Model          : {MODEL_NAME}")
     print(f"Structure      : {STRUCTURE_FILE}")
     print(f"Box size       : {BOX_SIZE} Å")
     print(f"Temperature    : {TEMPERATURE_K} K")
@@ -123,7 +136,7 @@ if __name__ == "__main__":
     print()
 
     result = run_nvt_md(
-        model_paths=MODEL_PATH,
+        model_name=MODEL_NAME,
         structure_file=STRUCTURE_FILE,
         box_size=BOX_SIZE,
         temperature_K=TEMPERATURE_K,
