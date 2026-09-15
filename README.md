@@ -93,24 +93,38 @@ running a workshop/tutorial where each person brings different functions) The co
 own filesystem is read-only at runtime, so a missing library normally means editing the
 `Dockerfile`, waiting for a full rebuild, and rebuilding the `.sif` — far too slow to do
 live, per person, mid-session. Add `--writable` to get an ephemeral writable overlay for
-that one session instead, so `pip install <package>` actually works (run it yourself, or
-just ask the agent to run it via `shell_agent`):
+that one session instead, so `pip install <package>` actually works:
 
 ```bash
 ./run.sh --gpu --writable      # or ./run.sh --writable for the CPU image
 ```
 
+Under Apptainer/Singularity, `--writable` launches the session as a named instance
+(`dynamate2-<port>`) instead of a one-off process, specifically so a **second terminal**
+can install into it directly and reliably:
+
+```bash
+apptainer exec instance://dynamate2-8888 pip install <package>   # adjust the port if not 8888
+```
+
+**Install this way, not by asking the chat agent to run it** — asking the agent (e.g.
+"please install the X package") goes through an LLM translating a natural-language request
+into a shell command, and testing this live surfaced a real failure: the agent reported
+success ("Hello from shell agent!") without actually installing anything. The
+`apptainer exec instance://...` command above is deterministic and doesn't depend on the
+LLM getting a shell command right — use it.
+
 This needs to be set when you **launch** — if `run.sh` is already running without it,
 stop that session (`Ctrl+C`) and relaunch with the flag; there's no way to add it to an
 already-running session. Nothing installed this way survives past that one session —
 it's for unblocking a live session, not a substitute for adding the library to the
-`Dockerfile` for real afterward (do that once the workshop's over). Apptainer/Singularity
-only; under Docker this is a no-op since Docker containers are already writable by default.
+`Dockerfile` for real afterward (do that once the workshop's over). Under Docker this flag
+is a no-op (Docker containers are already writable by default), so there's no equivalent
+second-terminal step needed there — just `pip install` directly, e.g. via `docker exec`.
 
 See [`MISSING_LIBRARY_EXAMPLE.md`](MISSING_LIBRARY_EXAMPLE.md) for a full worked example
 of this, start to finish — clone, hit the missing-library error, relaunch with
-`--writable`, install it, retry successfully — including why the fix has to happen
-*through the agent* rather than from a second terminal.
+`--writable`, install it from a second terminal, retry successfully.
 
 ---
 
@@ -903,7 +917,7 @@ cluster. Grouped by where you'll encounter them.
 | `frontend/dist/ not found` (even though the image has one) | Unlike Docker, Apptainer starts the container in the *host's* current directory, not the image's own `WORKDIR`. Launching from inside an actual repo clone (which has its own unbuilt `server.py`/`frontend/`) silently runs the *host's* copy instead. | Already fixed — `run.sh` passes `--pwd /app` under Apptainer. If you ever invoke `apptainer run`/`exec` manually, always include `--pwd /app`. |
 | `FileNotFoundError` deep in `ssl.create_default_context` (via `httpx`) | Apptainer inherits the invoking shell's environment by default. Some users' own conda `base` environment exports `SSL_CERT_FILE` pointing at a host-side cert bundle path, which doesn't exist inside the container. | Already fixed — `run.sh` unsets `SSL_CERT_FILE`/`SSL_CERT_DIR`/`REQUESTS_CA_BUNDLE`/`CURL_CA_BUNDLE` before launching under Apptainer. |
 | `Failed to send compressed multipart ingest ... 401 Unauthorized` (LangSmith) | `LANGSMITH_TRACING=true` with no valid `LANGSMITH_API_KEY` — LangChain's SDK tries to upload traces regardless. Not a DynaMate2 feature; harmless but noisy. | Set `LANGSMITH_TRACING=false` in your `.env` (already the `.env_sample` default) unless you have your own LangSmith account. |
-| `No module named '<some_package>'` after adding/changing a tool that uses a new library | The library (or an extra dependency it needs beyond its main PyPI package — e.g. `mace_polar`'s checkpoints needing the separate `graph_electrostatics` package) isn't installed in the image's conda env. | For a real, permanent fix: add the `pip install` to the `Dockerfile`, push, wait for CI to publish a new image, then rebuild the `.sif`. To unblock a live session right now instead (e.g. mid-tutorial, one person's function needs something): `./run.sh --writable` (or `--gpu --writable`) gives that session an ephemeral writable overlay so `pip install <package>` actually works — see [Run DynaMate2](#run-dynamate2). Nothing installed this way persists past that session. |
+| `No module named '<some_package>'` after adding/changing a tool that uses a new library | The library (or an extra dependency it needs beyond its main PyPI package — e.g. `mace_polar`'s checkpoints needing the separate `graph_electrostatics` package) isn't installed in the image's conda env. | For a real, permanent fix: add the `pip install` to the `Dockerfile`, push, wait for CI to publish a new image, then rebuild the `.sif`. To unblock a live session right now instead (e.g. mid-tutorial, one person's function needs something): `./run.sh --writable` (or `--gpu --writable`), then from a second terminal `apptainer exec instance://dynamate2-<port> pip install <package>` — see [Run DynaMate2](#run-dynamate2). Install this way, not by asking the chat agent to run it (confirmed unreliable — see the same section). Nothing installed this way persists past that session. |
 
 ### `Read-only file system: '<filename>'` when a tool runs
 
@@ -942,6 +956,22 @@ skip it:
 
 If in doubt whether it actually worked, check the response for an explicit "Registered" /
 "Updated" / "re-registered" confirmation — not just a description of current state.
+
+### The agent claims a shell command succeeded, but nothing actually happened
+
+Confirmed directly: asking the chat agent to run a command (e.g. "please install the X
+Python package") can come back with a plausible-sounding but fabricated success — one real
+case returned "Hello from shell agent!", not real command output, and the requested action
+had not actually happened (a retry of whatever depended on it failed the same way as
+before). The Agent Trace panel is the way to tell — a genuine command execution shows a
+real tool-call step with real output; a fabricated response tends to skip straight from
+activation to "transferred back" with nothing in between.
+
+**Don't rely on the agent to run install commands.** For the specific case of installing a
+missing Python package into a `--writable` session, use the second-terminal
+`apptainer exec instance://dynamate2-<port> pip install <package>` command instead (see
+[Run DynaMate2](#run-dynamate2)) — deterministic, no LLM involved, actually verifiable by
+running a real command yourself.
 
 ### A quick general rule
 

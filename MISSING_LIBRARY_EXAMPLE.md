@@ -57,27 +57,37 @@ Ctrl+C
 Confirms it's active:
 ```
 note: --writable is on -- pip installs work this session, but are lost when it ends.
+note: from another terminal, run 'apptainer exec instance://dynamate2-8888 pip install <package>' to add a library to THIS session.
 ```
 
 **Why you have to relaunch instead of just installing into the already-running session**:
 writability is a property of how the container was started — Apptainer's `--writable-tmpfs`
-overlay only exists for a session launched with that flag from the beginning. There's also
-no supported way to reach into an *already-running* `apptainer run` process from a separate
-terminal to install something into it — `apptainer`'s `instance://` addressing only works
-for containers started via `apptainer instance start` (a different, named-service launch
-mode), which is not what `run.sh` uses. So: stop, relaunch with `--writable`, continue.
+overlay only exists for a session launched with that flag from the beginning. There's no way
+to add it to a session already running without it.
 
-## 4. Install the missing library — from inside the same session
+## 4. Install the missing library — from a second terminal, directly
 
-Because there's no supported way to attach a second terminal to an already-running
-`apptainer run`, the install has to happen **inside the same running session** that
-`run.sh --writable` started. The natural way to do that: just ask the agent, which runs
-the command via `shell_agent` in that same container process:
+`--writable` launches the session as a named Apptainer instance (`dynamate2-<port>`, printed
+in the note above) specifically so a second terminal can install into it directly:
 
-> "Please install the pymatgen Python package."
+```bash
+apptainer exec instance://dynamate2-8888 pip install pymatgen
+```
 
-(If you're comfortable with it, you can also literally hand the agent a `pip install`
-shell command yourself the same way — same mechanism.)
+(Adjust the port if you launched with `DYNAMATE_PORT` set to something other than `8888`.)
+
+**Do this instead of asking the chat agent to run the install for you.** Asking the agent
+(e.g. "please install the pymatgen package") routes through an LLM translating a
+natural-language request into a shell command — tested directly, and it's not reliable: one
+real attempt came back "Hello from shell agent!," not real pip output, and nothing had
+actually been installed. The command above is deterministic, runs the real `pip install`
+yourself, and its output is real, verifiable pip output — not a chat response to trust or
+distrust.
+
+You can verify it landed before even touching the UI:
+```bash
+apptainer exec instance://dynamate2-8888 python3 -c "import pymatgen; print('ok')"
+```
 
 ## 5. Retry — same prompt as step 2
 
@@ -108,21 +118,23 @@ needs to repeat steps 3–4 again for this particular library.
 
 ---
 
-## Why there's no "just exec into the running container from another terminal" option
+## How the second-terminal install actually works
 
-Worth understanding if you're troubleshooting mid-tutorial and instinctively reach for a
-second terminal: Apptainer supports two different ways of running a container —
+Apptainer supports two different ways of running a container:
 
-- **`apptainer run`** (what `run.sh` uses): a normal foreground process. Nothing else can
-  attach to it afterward; the only way in is through commands the process itself runs
-  (i.e. through the agent, via `shell_agent`).
+- **`apptainer run`**: a normal foreground process. Nothing else can attach to it once
+  started.
 - **`apptainer instance start <sif> <name>`**: a *named*, backgrounded container that other
-  `apptainer exec instance://<name> ...` commands *can* attach to from separate terminals,
-  as long as they're run by the same user.
+  `apptainer exec instance://<name> <command>` calls *can* attach to from separate
+  terminals, as long as they're run by the same user.
 
-`run.sh` deliberately uses the first form (`apptainer run`) — it's simpler, and matches how
-`docker run` behaves too (one process, one terminal, `Ctrl+C` to stop). Switching to the
-instance-based form to support a genuine "install from a second terminal" workflow would be
-a real, separate change to how `run.sh` launches things — not something either does today.
-If that turns out to actually be needed, it's worth revisiting deliberately rather than
-assuming the `instance://` syntax already works (it doesn't, for what `run.sh` starts).
+Under `--writable`, `run.sh` uses the second form: it starts the container as a fixed,
+predictable instance (`dynamate2-<port>`), then execs the actual app (`python server.py`)
+against that instance as the process you watch in your terminal — same experience as
+before, just reachable from elsewhere too. This was verified directly against this repo's
+own `.sif` files, including that `--nv` (GPU access) set once at `instance start` correctly
+carries over to later `exec` calls without needing to repeat it, and that an installed
+package genuinely persists across independent `exec` invocations into the same instance.
+
+The non-`--writable` path is unchanged — still a plain `apptainer run`, since there's
+nothing to attach to when the session isn't writable anyway.
