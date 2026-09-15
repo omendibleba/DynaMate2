@@ -26,8 +26,8 @@ ARG ENV_FILE=docker/environment.cpu.yml
 ARG IMAGE_VARIANT=cpu
 ARG TORCH_VERSION=2.5.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
-ARG GPU_TORCH_VERSION=2.5.0+cu121
-ARG GPU_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu121
+ARG GPU_TORCH_VERSION=2.10.0+cu130
+ARG GPU_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 
 WORKDIR /app
 
@@ -51,13 +51,19 @@ RUN mamba env create -n dynamate2 -f /tmp/environment.yml && mamba clean -afy
 # by mace_polar's own install instructions.
 # cuequivariance/cuequivariance-torch (CuEq acceleration, mace_polar's
 # enable_cueq=True option -- meaningfully reduces GPU memory use, worked
-# around a CUDA OOM in practice) is GPU-only and its own dependency chain
-# is not pinned to a specific torch build, so it can silently pull in a
-# different torch than the one just pinned above (observed directly: a
-# plain `torch` wheel appeared in its resolved install list, alongside a
-# mix of cu12/cu13 CUDA library variants). Re-asserting the exact pinned
-# GPU_TORCH_VERSION immediately afterward forces it back, same defensive
-# pattern as the torch-before-mace-torch step above.
+# around a CUDA OOM in practice) is GPU-only. Pinned to 0.8.0, not latest:
+# the unpinned latest (0.11.1) resolves against a newer cuBLAS than the
+# cu121 torch build this image originally used (missing symbol
+# cublasGemmGroupedBatchedEx), which made libcue_ops.so fail to load and
+# silently fall back to its pure-Python "naive" implementation --
+# `'SegmentedPolynomialNaive' object has no attribute
+# 'buffer_num_segments'` downstream in mace's own integration code.
+# GPU_TORCH_VERSION was bumped to 2.10.0+cu130 for the same reason: 0.8.0
+# needs a CUDA 13-generation cuBLAS to have that symbol at all. This exact
+# combination (torch 2.10.0+cu130, mace-torch 0.3.16, cuequivariance/
+# cuequivariance-torch/cuequivariance-ops-torch-cu12 0.8.0) was confirmed
+# against a real, working MACE-polar+CuEq environment elsewhere on this
+# cluster, not guessed.
 RUN if [ "$IMAGE_VARIANT" = "cpu" ]; then \
       mamba run -n dynamate2 pip install --no-cache-dir torch==${TORCH_VERSION} --index-url ${TORCH_INDEX_URL} && \
       mamba run -n dynamate2 pip install --no-cache-dir "mace-torch>=0.3.16" && \
@@ -66,7 +72,7 @@ RUN if [ "$IMAGE_VARIANT" = "cpu" ]; then \
       mamba run -n dynamate2 pip install --no-cache-dir torch==${GPU_TORCH_VERSION} --index-url ${GPU_TORCH_INDEX_URL} && \
       mamba run -n dynamate2 pip install --no-cache-dir "mace-torch>=0.3.16" && \
       mamba run -n dynamate2 pip install --no-cache-dir "git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.0" && \
-      mamba run -n dynamate2 pip install --no-cache-dir cuequivariance cuequivariance-torch cuequivariance-ops-torch-cu12 && \
+      mamba run -n dynamate2 pip install --no-cache-dir cuequivariance==0.8.0 cuequivariance-torch==0.8.0 cuequivariance-ops-torch-cu12==0.8.0 && \
       mamba run -n dynamate2 pip install --no-cache-dir torch==${GPU_TORCH_VERSION} --index-url ${GPU_TORCH_INDEX_URL}; \
     fi
 
