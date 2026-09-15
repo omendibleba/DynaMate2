@@ -68,10 +68,18 @@ PROMPT_T2 = (
 )
 
 # ── T3a: Register run_nvt_md from .py file ──────────────────────────────────────
+# NOTE: this deliberately does NOT say "update it if it already exists" -- that
+# exact conditional phrasing was observed causing tool_manager to treat "a tool by
+# this name already exists" as a reason to skip the call entirely (reporting
+# "already registered, no further action needed") instead of actually comparing
+# source and re-registering. Phrasing it as an unconditional imperative, with an
+# explicit "don't skip" instruction, is what reliably worked in practice.
 PROMPT_T3A = (
-    f"Please register the tools defined in the file {_tut('ASE_NVT_PBC.py')}. "
-    "Update it if it already exists. "
-    "Then assign the run_nvt_md tool to mace_md_specialist."
+    f"Please re-register the tools defined in the file {_tut('ASE_NVT_PBC.py')} — "
+    "call register_tool_from_file with this exact path now, even if a tool by this "
+    "name is already registered, since the file's contents may have changed since "
+    "it was last registered. Do not skip this step just because the tool already "
+    "exists. Then assign the run_nvt_md tool to mace_md_specialist."
 )
 
 # ── T3b: Run NVT MD ─────────────────────────────────────────────────────────────
