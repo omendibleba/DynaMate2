@@ -79,6 +79,19 @@ if [ -z "$SIF_PATH" ] && [ -e "$DEFAULT_SIF" ]; then
 fi
 
 # ── API key ──────────────────────────────────────────────────────────────────
+# Apptainer inherits the invoking shell's FULL environment by default (see the
+# SSL_CERT_FILE handling further down for the same class of issue) -- some
+# users on this shared cluster do their own separate LangChain/LangSmith work
+# and may have LANGSMITH_TRACING/LANGCHAIN_TRACING_V2 (etc.) exported
+# ambiently, e.g. from a shell profile or conda env activation hook, unrelated
+# to DynaMate2 entirely. If a user's own .env doesn't mention these at all,
+# that ambient value would otherwise leak straight through uncontrolled,
+# causing the same "Failed to send compressed multipart ingest ... 401
+# Unauthorized" noise .env_sample's own default is supposed to prevent.
+# Clear them first so only what .env explicitly sets (sourced below) survives.
+unset LANGSMITH_TRACING LANGSMITH_API_KEY LANGSMITH_ENDPOINT LANGSMITH_PROJECT \
+      LANGCHAIN_TRACING_V2 LANGCHAIN_API_KEY LANGCHAIN_ENDPOINT LANGCHAIN_PROJECT
+
 # .env follows python-dotenv's tolerant "KEY = value" format (spaces allowed
 # around '='), which plain `source` chokes on ("command not found") — an
 # actual .env in this repo uses exactly that spacing. Normalize to KEY=value
@@ -90,6 +103,8 @@ if [ -z "${OPENAI_API_KEY:-}" ] && [ -f "$ENV_FILE_PATH" ]; then
   source <(sed -E -n 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=[[:space:]]*(.*)$/\1=\2/p' "$ENV_FILE_PATH")
   set +a
 fi
+# Explicit, safe default regardless of whether .env mentioned tracing at all.
+export LANGSMITH_TRACING="${LANGSMITH_TRACING:-false}"
 if [ -z "${OPENAI_API_KEY:-}" ]; then
   echo "error: OPENAI_API_KEY is not set." >&2
   echo "  export OPENAI_API_KEY=sk-... before running this script, or put it in a .env file next to it." >&2
