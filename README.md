@@ -107,6 +107,11 @@ it's for unblocking a live session, not a substitute for adding the library to t
 `Dockerfile` for real afterward (do that once the workshop's over). Apptainer/Singularity
 only; under Docker this is a no-op since Docker containers are already writable by default.
 
+See [`MISSING_LIBRARY_EXAMPLE.md`](MISSING_LIBRARY_EXAMPLE.md) for a full worked example
+of this, start to finish — clone, hit the missing-library error, relaunch with
+`--writable`, install it, retry successfully — including why the fix has to happen
+*through the agent* rather than from a second terminal.
+
 ---
 
 ## Run DynaMate2
