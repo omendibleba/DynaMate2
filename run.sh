@@ -37,6 +37,7 @@ set -euo pipefail
 
 IMAGE_BASE="ghcr.io/omendibleba/dynamate2"
 PORT="${DYNAMATE_PORT:-8888}"
+INSTANCE_NAME="dynamate2-${PORT}"   # Apptainer --writable instance name; see cleanup() and the launch section below
 DATA_DIR="${DYNAMATE_DATA_DIR:-$(pwd)/dynamate-data}"
 GPU=0
 WRITABLE=0
@@ -127,6 +128,11 @@ fi
 cleanup() {
   if [ "$RUNTIME" = "docker" ]; then
     docker rm -f dynamate2 >/dev/null 2>&1 || true
+  elif [ "$WRITABLE" = "1" ]; then
+    # A named Apptainer instance (used for --writable, see below) keeps running
+    # after the foreground `exec` that launched it dies -- unlike Docker's --rm,
+    # there's no automatic teardown, so this has to stop it explicitly.
+    "$RUNTIME" instance stop "$INSTANCE_NAME" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT INT TERM
@@ -235,5 +241,22 @@ else
 
   echo "Open this in your browser once it's ready: http://localhost:${PORT}"
   echo "(On a remote HPC login/compute node, forward the port to your own machine first — e.g. ssh -L ${PORT}:localhost:${PORT} <host>.)"
-  "$BIN" run "${NV_FLAG[@]}" "${WRITABLE_FLAG[@]}" --pwd /app --bind "$BINDS" "$SOURCE"
+
+  if [ "$WRITABLE" = "1" ]; then
+    # A plain `apptainer run` gives a second terminal no way to attach into its
+    # already-running writable overlay. `instance://` addressing (`apptainer exec
+    # instance://<name> <cmd>` from any other terminal) supports that, but only for a
+    # container launched as a named instance (`instance start`), not a plain `run`.
+    # Verified directly against this repo's own .sif: `instance start` does NOT
+    # auto-run the entrypoint (this image has no %startscript), so the separate
+    # `exec ... python server.py` below is required. Also verified: a stale instance
+    # from a previous crashed/killed session blocks a fresh `instance start`
+    # ("already exists", exit 255) -- guarded against below.
+    "$BIN" instance stop "$INSTANCE_NAME" >/dev/null 2>&1 || true
+    "$BIN" instance start "${NV_FLAG[@]}" "${WRITABLE_FLAG[@]}" --bind "$BINDS" "$SOURCE" "$INSTANCE_NAME"
+    echo "note: from another terminal, run '$BIN exec instance://$INSTANCE_NAME pip install <package>' to add a library to THIS session." >&2
+    "$BIN" exec --pwd /app "instance://$INSTANCE_NAME" python server.py
+  else
+    "$BIN" run "${NV_FLAG[@]}" "${WRITABLE_FLAG[@]}" --pwd /app --bind "$BINDS" "$SOURCE"
+  fi
 fi
