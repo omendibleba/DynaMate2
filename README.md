@@ -29,6 +29,7 @@ Originally developed as a research framework for molecular simulation workflows 
   - [Using as a Python Library](#using-as-a-python-library)
 - [Local Development Setup](#local-development-setup)
 - [How Persistence Works](#how-persistence-works)
+  - [Where Tool Source Code and Simulation Output Files Are Saved](#where-tool-source-code-and-simulation-output-files-are-saved)
 - [Core Concepts](#core-concepts)
 - [Adding Tools and Agents](#adding-tools-and-agents)
 - [Running Tests](#running-tests)
@@ -639,6 +640,43 @@ Managed by `PoolStore` and `PersistentAgentPoolWithSupervisor` in `dynamate/pers
    └── Re-apply each assignment        → rebuild only target agent
 7. PromptEnhancer(model, pool) → queries pool live on every enhance() call
 ```
+
+### Where Tool Source Code and Simulation Output Files Are Saved
+
+Two separate things live under the persistent data directory (`./dynamate-data/` by
+default when launched via `run.sh` — see [Run DynaMate2](#run-dynamate2) — or `ui_state/`
+directly when running `python server.py`/`main.py` without a container):
+
+| What | Default location (relative to the persistent data dir) |
+|---|---|
+| Registered **tool source code** (`.py` files, human-editable) | `ui_state/tools/<name>.py` |
+| Pool state (agents, assignments — `pool_state.json`) | `ui_state/pool_state.json` |
+| Conversation history | `ui_state/conversations.db` |
+| **Simulation/tutorial output files** (XYZ structures, trajectories, plots, packmol boxes — anything a tool writes when you give it an `output_path`/`output_file`) | `tutorials/` |
+
+**To change where *everything* is saved** (all of the above at once, e.g. to point at
+shared/larger storage): set `DYNAMATE_DATA_DIR` before launching —
+`export DYNAMATE_DATA_DIR=/path/to/somewhere; ./run.sh`. See the
+[Run DynaMate2](#run-dynamate2) table and [Multi-user data](#multi-user-data-private-vs-shared-state)
+for the per-user-vs-shared implications of this.
+
+**To direct one specific simulation's output to its own subfolder**, no config needed —
+just ask for that path in your prompt, same as the tutorial's own quickstart prompts do
+(`backend/quickstart.py`'s `_tut()` helper does exactly this). For example:
+> "...save the result to `tutorials/nacl_run_2/box.xyz`."
+
+Every tool that writes a file takes an explicit output-path argument, and the agent uses
+whatever path you give it — including a brand-new subfolder name that doesn't exist yet
+(`smiles_to_xyz`, `packmol_build_system`, and `run_nvt_md` all create missing parent
+directories automatically).
+
+**Important constraint under the container deployment (Docker or Apptainer)**: only paths
+under `tutorials/` or `ui_state/` are both writable *and* persisted — these are the two
+directories `run.sh` bind-mounts from the host. A path outside both of those (e.g. a bare
+filename with no directory prefix, or something like `/app/dynamate-data/...` which isn't
+an actual mount point) will fail with `Read-only file system` — the container's own root
+filesystem is read-only by design. When asking the agent to save somewhere custom, always
+give a path under `tutorials/` (or the absolute equivalent, `/app/tutorials/...`).
 
 ---
 
