@@ -33,6 +33,7 @@ Originally developed as a research framework for molecular simulation workflows 
 - [Core Concepts](#core-concepts)
 - [Adding Tools and Agents](#adding-tools-and-agents)
 - [Running Tests](#running-tests)
+- [Troubleshooting: Common Errors and How to Avoid Them](#troubleshooting-common-errors-and-how-to-avoid-them)
 - [Limitations](#limitations)
 
 ---
@@ -861,6 +862,70 @@ python tests/test_persistence.py
 ```
 
 `test_dynamic_agent`, `test_agent_pool`, and `test_add_agent` make real LLM API calls and require a valid `OPENAI_API_KEY`. `test_persistence` does not make LLM calls.
+
+---
+
+## Troubleshooting: Common Errors and How to Avoid Them
+
+Errors actually hit (and fixed) while deploying and using DynaMate2 on a real shared
+cluster. Grouped by where you'll encounter them.
+
+### Deployment (building/running the container)
+
+| Error | Cause | Fix |
+|---|---|---|
+| `proot error: ptrace(TRACEME): Operation not permitted` | Some HPC clusters block unprivileged `ptrace` on GPU compute nodes (a kernel policy), which Apptainer needs to pull/build a `docker://` image the first time it runs one. | Pre-build the `.sif` on the CPU-only login node, run that local file on the compute node — see [Run DynaMate2](#run-dynamate2). `run.sh` auto-detects a local `.sif` and skips the pull/build step entirely. |
+| `no space left on device` during `apptainer pull` | Apptainer's *build cache* (`~/.apptainer/cache`) defaults to your home directory regardless of where the final `.sif` goes — a full/tight home quota fails the pull even with plenty of room at the destination. | Redirect the cache before pulling: `export APPTAINER_CACHEDIR=/path/to/shared/storage/.apptainer-cache`. |
+| `frontend/dist/ not found` (even though the image has one) | Unlike Docker, Apptainer starts the container in the *host's* current directory, not the image's own `WORKDIR`. Launching from inside an actual repo clone (which has its own unbuilt `server.py`/`frontend/`) silently runs the *host's* copy instead. | Already fixed — `run.sh` passes `--pwd /app` under Apptainer. If you ever invoke `apptainer run`/`exec` manually, always include `--pwd /app`. |
+| `FileNotFoundError` deep in `ssl.create_default_context` (via `httpx`) | Apptainer inherits the invoking shell's environment by default. Some users' own conda `base` environment exports `SSL_CERT_FILE` pointing at a host-side cert bundle path, which doesn't exist inside the container. | Already fixed — `run.sh` unsets `SSL_CERT_FILE`/`SSL_CERT_DIR`/`REQUESTS_CA_BUNDLE`/`CURL_CA_BUNDLE` before launching under Apptainer. |
+| `Failed to send compressed multipart ingest ... 401 Unauthorized` (LangSmith) | `LANGSMITH_TRACING=true` with no valid `LANGSMITH_API_KEY` — LangChain's SDK tries to upload traces regardless. Not a DynaMate2 feature; harmless but noisy. | Set `LANGSMITH_TRACING=false` in your `.env` (already the `.env_sample` default) unless you have your own LangSmith account. |
+| `No module named '<some_package>'` after adding/changing a tool that uses a new library | The library (or an extra dependency it needs beyond its main PyPI package — e.g. `mace_polar`'s checkpoints needing the separate `graph_electrostatics` package) isn't installed in the image's conda env. | Add the `pip install` to the `Dockerfile`, push, wait for CI to publish a new image, then rebuild the `.sif`. To confirm a fix *before* committing to that cycle: `apptainer exec --writable-tmpfs <sif> pip install <package>` gives a throwaway writable overlay to test in. |
+
+### `Read-only file system: '<filename>'` when a tool runs
+
+The container's own root filesystem is read-only by design — only `tutorials/` and
+`ui_state/` are writable (bind-mounted from the host). This error means a tool tried to
+write somewhere else, almost always one of:
+- **A bare filename with no directory** (e.g. `nvt.log`, `packmol_input.inp`) — some tool
+  parameters default to a bare filename, which resolves under the container's read-only
+  `/app` root if left unspecified. **Always give every file-output parameter an explicit
+  path under `tutorials/`** when prompting — see
+  [Where Tool Source Code and Simulation Output Files Are Saved](#where-tool-source-code-and-simulation-output-files-are-saved).
+  If you're adding a new tool yourself, use `tempfile.mkstemp()` for any scratch/intermediate
+  file instead of a bare relative name (see `tutorials/packmol_build_system.py`).
+- **A path that looks plausible but isn't an actual mount point** — e.g. `/app/dynamate-data/...`
+  (that name only exists on the *host* side; inside the container it's split into
+  `/app/tutorials` and `/app/ui_state`).
+- **A brand-new subfolder that doesn't exist yet** — as of this fix, `smiles_to_xyz`,
+  `packmol_build_system`, and `run_nvt_md` all auto-create missing parent directories, but
+  any tool you add yourself should do the same (`os.makedirs(os.path.dirname(...), exist_ok=True)`).
+
+### The agent says a tool is "already registered/exists" and does nothing, when you asked for an update
+
+Phrasing like *"update it if it already exists"* or *"these are already registered but I'd
+like to update them"* has been observed causing the model to treat "a tool by this name
+already exists" as a reason to stop, rather than actually calling
+`register_tool_from_code`/`register_tool_from_file` to compare and apply the new source.
+The response reads like a status report ("The tool X was already registered and assigned
+...") rather than confirmation of a real action taken.
+
+**Fix**: phrase re-registration as an unconditional imperative, and say explicitly not to
+skip it:
+> "Please **re-register** the tool defined in `tutorials/<file>.py` — call
+> `register_tool_from_file` with this path **now**, even if a tool by this name already
+> exists, since the file's contents may have changed. **Do not skip this** just because
+> the tool already exists."
+
+If in doubt whether it actually worked, check the response for an explicit "Registered" /
+"Updated" / "re-registered" confirmation — not just a description of current state.
+
+### A quick general rule
+
+Most of the errors above trace back to one of two things: **giving a tool an implicit
+(default) path instead of an explicit one**, or **phrasing a request so the model can
+plausibly interpret it as "nothing to do."** When in doubt, be explicit and unconditional:
+name every output path yourself, and say directly what action you want taken rather than
+describing the current state and hoping the model infers the rest.
 
 ---
 
