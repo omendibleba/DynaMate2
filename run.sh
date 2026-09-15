@@ -100,7 +100,14 @@ ENV_FILE_PATH="$(dirname "$0")/.env"
 if [ -z "${OPENAI_API_KEY:-}" ] && [ -f "$ENV_FILE_PATH" ]; then
   set -a
   # shellcheck disable=SC1090
-  source <(sed -E -n 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=[[:space:]]*(.*)$/\1=\2/p' "$ENV_FILE_PATH")
+  # `tr -d '\r'` strips Windows-style CRLF line endings first -- a .env saved
+  # with them (common from some editors/IDEs) otherwise leaves every parsed
+  # value with an invisible trailing carriage return. Confirmed directly:
+  # OPENAI_API_KEY with a trailing \r looks completely normal everywhere
+  # (echo, visual inspection) but fails OpenAI's exact-match key validation
+  # with a genuinely confusing "Incorrect API key provided" error, even
+  # though the key is valid and works fine tested any other way.
+  source <(tr -d '\r' < "$ENV_FILE_PATH" | sed -E -n 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=[[:space:]]*(.*)$/\1=\2/p')
   set +a
 fi
 # Explicit, safe default regardless of whether .env mentioned tracing at all.
