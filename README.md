@@ -88,6 +88,25 @@ their own private tools/agents/conversation history — see
 that instead. `containers/*.sif` is gitignored, so the symlinks from step 3 are yours to
 keep — no risk of accidentally committing or affecting anyone else's clone.
 
+**Bringing your own function that needs a library not already in the image?** (e.g.
+running a workshop/tutorial where each person brings different functions) The container's
+own filesystem is read-only at runtime, so a missing library normally means editing the
+`Dockerfile`, waiting for a full rebuild, and rebuilding the `.sif` — far too slow to do
+live, per person, mid-session. Add `--writable` to get an ephemeral writable overlay for
+that one session instead, so `pip install <package>` actually works (run it yourself, or
+just ask the agent to run it via `shell_agent`):
+
+```bash
+./run.sh --gpu --writable      # or ./run.sh --writable for the CPU image
+```
+
+This needs to be set when you **launch** — if `run.sh` is already running without it,
+stop that session (`Ctrl+C`) and relaunch with the flag; there's no way to add it to an
+already-running session. Nothing installed this way survives past that one session —
+it's for unblocking a live session, not a substitute for adding the library to the
+`Dockerfile` for real afterward (do that once the workshop's over). Apptainer/Singularity
+only; under Docker this is a no-op since Docker containers are already writable by default.
+
 ---
 
 ## Run DynaMate2
@@ -879,7 +898,7 @@ cluster. Grouped by where you'll encounter them.
 | `frontend/dist/ not found` (even though the image has one) | Unlike Docker, Apptainer starts the container in the *host's* current directory, not the image's own `WORKDIR`. Launching from inside an actual repo clone (which has its own unbuilt `server.py`/`frontend/`) silently runs the *host's* copy instead. | Already fixed — `run.sh` passes `--pwd /app` under Apptainer. If you ever invoke `apptainer run`/`exec` manually, always include `--pwd /app`. |
 | `FileNotFoundError` deep in `ssl.create_default_context` (via `httpx`) | Apptainer inherits the invoking shell's environment by default. Some users' own conda `base` environment exports `SSL_CERT_FILE` pointing at a host-side cert bundle path, which doesn't exist inside the container. | Already fixed — `run.sh` unsets `SSL_CERT_FILE`/`SSL_CERT_DIR`/`REQUESTS_CA_BUNDLE`/`CURL_CA_BUNDLE` before launching under Apptainer. |
 | `Failed to send compressed multipart ingest ... 401 Unauthorized` (LangSmith) | `LANGSMITH_TRACING=true` with no valid `LANGSMITH_API_KEY` — LangChain's SDK tries to upload traces regardless. Not a DynaMate2 feature; harmless but noisy. | Set `LANGSMITH_TRACING=false` in your `.env` (already the `.env_sample` default) unless you have your own LangSmith account. |
-| `No module named '<some_package>'` after adding/changing a tool that uses a new library | The library (or an extra dependency it needs beyond its main PyPI package — e.g. `mace_polar`'s checkpoints needing the separate `graph_electrostatics` package) isn't installed in the image's conda env. | Add the `pip install` to the `Dockerfile`, push, wait for CI to publish a new image, then rebuild the `.sif`. To confirm a fix *before* committing to that cycle: `apptainer exec --writable-tmpfs <sif> pip install <package>` gives a throwaway writable overlay to test in. |
+| `No module named '<some_package>'` after adding/changing a tool that uses a new library | The library (or an extra dependency it needs beyond its main PyPI package — e.g. `mace_polar`'s checkpoints needing the separate `graph_electrostatics` package) isn't installed in the image's conda env. | For a real, permanent fix: add the `pip install` to the `Dockerfile`, push, wait for CI to publish a new image, then rebuild the `.sif`. To unblock a live session right now instead (e.g. mid-tutorial, one person's function needs something): `./run.sh --writable` (or `--gpu --writable`) gives that session an ephemeral writable overlay so `pip install <package>` actually works — see [Run DynaMate2](#run-dynamate2). Nothing installed this way persists past that session. |
 
 ### `Read-only file system: '<filename>'` when a tool runs
 
