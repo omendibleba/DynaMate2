@@ -49,6 +49,15 @@ RUN mamba env create -n dynamate2 -f /tmp/environment.yml && mamba clean -afy
 # torch.load time (the pickled model references its custom layer classes)
 # -- not pulled in by mace-torch itself. Pinned to the version documented
 # by mace_polar's own install instructions.
+# cuequivariance/cuequivariance-torch (CuEq acceleration, mace_polar's
+# enable_cueq=True option -- meaningfully reduces GPU memory use, worked
+# around a CUDA OOM in practice) is GPU-only and its own dependency chain
+# is not pinned to a specific torch build, so it can silently pull in a
+# different torch than the one just pinned above (observed directly: a
+# plain `torch` wheel appeared in its resolved install list, alongside a
+# mix of cu12/cu13 CUDA library variants). Re-asserting the exact pinned
+# GPU_TORCH_VERSION immediately afterward forces it back, same defensive
+# pattern as the torch-before-mace-torch step above.
 RUN if [ "$IMAGE_VARIANT" = "cpu" ]; then \
       mamba run -n dynamate2 pip install --no-cache-dir torch==${TORCH_VERSION} --index-url ${TORCH_INDEX_URL} && \
       mamba run -n dynamate2 pip install --no-cache-dir "mace-torch>=0.3.16" && \
@@ -56,7 +65,9 @@ RUN if [ "$IMAGE_VARIANT" = "cpu" ]; then \
     elif [ "$IMAGE_VARIANT" = "gpu" ]; then \
       mamba run -n dynamate2 pip install --no-cache-dir torch==${GPU_TORCH_VERSION} --index-url ${GPU_TORCH_INDEX_URL} && \
       mamba run -n dynamate2 pip install --no-cache-dir "mace-torch>=0.3.16" && \
-      mamba run -n dynamate2 pip install --no-cache-dir "git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.0"; \
+      mamba run -n dynamate2 pip install --no-cache-dir "git+https://github.com/WillBaldwin0/graph_electrostatics.git@v0.4.0" && \
+      mamba run -n dynamate2 pip install --no-cache-dir cuequivariance cuequivariance-torch cuequivariance-ops-torch-cu12 && \
+      mamba run -n dynamate2 pip install --no-cache-dir torch==${GPU_TORCH_VERSION} --index-url ${GPU_TORCH_INDEX_URL}; \
     fi
 
 # Bundle the mace repo's CLI tools (create_lammps_model.py etc.) at a fixed,
