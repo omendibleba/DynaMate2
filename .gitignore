@@ -57,3 +57,6 @@ backend/__pycache__/
 # ── Container runtime data (run.sh's default persistent data dir) ────────────
 dynamate-data/
 *.sif
+
+### Local Container builder
+container_build.sh
