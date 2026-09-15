@@ -4,6 +4,16 @@
 #   ./run.sh                    # CPU image (default), port 8888
 #   ./run.sh --gpu              # GPU image — needs an NVIDIA GPU + driver
 #   DYNAMATE_PORT=9000 ./run.sh # use a different port
+#   ./run.sh --gpu --writable   # Apptainer/Singularity only: an ephemeral writable
+#                                 overlay for this one session, so `pip install <pkg>`
+#                                 (run by you, or by the agent via shell_agent) actually
+#                                 works instead of hitting "Read-only file system" --
+#                                 e.g. a tutorial where users bring their own functions
+#                                 needing a library not already in the image. Nothing
+#                                 installed this way persists past this session; fold
+#                                 anything you need permanently into the Dockerfile
+#                                 afterward. No-op with a warning under Docker (already
+#                                 writable by default there).
 #
 # Self-contained: only needs `docker` (with a running daemon) or
 # `apptainer`/`singularity` on PATH, plus network access to pull the image
@@ -29,10 +39,12 @@ IMAGE_BASE="ghcr.io/omendibleba/dynamate2"
 PORT="${DYNAMATE_PORT:-8888}"
 DATA_DIR="${DYNAMATE_DATA_DIR:-$(pwd)/dynamate-data}"
 GPU=0
+WRITABLE=0
 
 for arg in "$@"; do
   case "$arg" in
     --gpu) GPU=1 ;;
+    --writable) WRITABLE=1 ;;
     -h|--help)
       grep '^#' "$0" | sed 's/^#//'
       exit 0
@@ -43,6 +55,7 @@ for arg in "$@"; do
   esac
 done
 if [ "${DYNAMATE_GPU:-0}" = "1" ]; then GPU=1; fi
+if [ "${DYNAMATE_WRITABLE:-0}" = "1" ]; then WRITABLE=1; fi
 
 if [ "$GPU" = "1" ]; then TAG="gpu"; else TAG="latest"; fi
 IMAGE="${IMAGE_BASE}:${TAG}"
@@ -119,6 +132,9 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 if [ "$RUNTIME" = "docker" ]; then
+  if [ "$WRITABLE" = "1" ]; then
+    echo "note: --writable has no effect under Docker (its containers are already writable by default)." >&2
+  fi
   if [ "$SEED_NEEDED" = "1" ]; then
     echo "Seeding $DATA_DIR/tutorials from the image (first run)..."
     docker run --rm -v "$DATA_DIR/tutorials:/dest" --entrypoint sh "$IMAGE" \
@@ -197,6 +213,19 @@ else
   NV_FLAG=()
   if [ "$GPU" = "1" ]; then NV_FLAG=(--nv); fi
 
+  # Ephemeral writable overlay for this one session only -- lets `pip install`
+  # (or any other write to the image's own filesystem, e.g. /opt/conda/...)
+  # actually work instead of hitting "Read-only file system", the container's
+  # normal state under Apptainer. Nothing installed this way survives past
+  # this session; it's for unblocking a live session (e.g. a tutorial where
+  # someone's own function needs a library not already in the image), not a
+  # substitute for adding it to the Dockerfile for real afterward.
+  WRITABLE_FLAG=()
+  if [ "$WRITABLE" = "1" ]; then
+    WRITABLE_FLAG=(--writable-tmpfs)
+    echo "note: --writable is on -- pip installs work this session, but are lost when it ends." >&2
+  fi
+
   export APPTAINERENV_OPENAI_API_KEY="$OPENAI_API_KEY"
   export APPTAINERENV_DYNAMATE_PORT="$PORT"
   export APPTAINERENV_DYNAMATE_STATE_DIR="/app/ui_state"
@@ -206,5 +235,5 @@ else
 
   echo "Open this in your browser once it's ready: http://localhost:${PORT}"
   echo "(On a remote HPC login/compute node, forward the port to your own machine first — e.g. ssh -L ${PORT}:localhost:${PORT} <host>.)"
-  "$BIN" run "${NV_FLAG[@]}" --pwd /app --bind "$BINDS" "$SOURCE"
+  "$BIN" run "${NV_FLAG[@]}" "${WRITABLE_FLAG[@]}" --pwd /app --bind "$BINDS" "$SOURCE"
 fi
