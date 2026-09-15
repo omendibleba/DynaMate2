@@ -26,6 +26,7 @@ def packmol_build_system(
     """
     import subprocess
     import os
+    import tempfile
 
     if isinstance(xyz_files, str):
         xyz_files = [xyz_files]
@@ -44,7 +45,11 @@ def packmol_build_system(
             'Packmol is not found in PATH. Please install or load it first.'
         )
 
-    input_filename = 'packmol_input.inp'
+    # A real system temp file, not a bare relative filename -- the caller's
+    # current working directory isn't guaranteed to be writable (e.g. a
+    # read-only container root filesystem), while the OS temp directory is.
+    fd, input_filename = tempfile.mkstemp(suffix='.inp', prefix='packmol_input_')
+    os.close(fd)
     with open(input_filename, 'w') as f:
         f.write(f'tolerance {tolerance}\n')
         f.write('filetype xyz\n')
