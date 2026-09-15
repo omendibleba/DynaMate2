@@ -83,6 +83,11 @@ PROMPT_T3A = (
 )
 
 # ── T3b: Run NVT MD ─────────────────────────────────────────────────────────────
+# NOTE: both output_traj AND log_file must be given explicit paths here.
+# run_nvt_md's log_file defaults to a bare relative filename ("nvt.log") --
+# leaving it unspecified means the agent falls back to that default, which
+# resolves under the container's read-only root ("Read-only file system:
+# 'nvt.log'") rather than the writable, persisted tutorials/ directory.
 PROMPT_T3B = (
     "Please run a short NVT molecular dynamics simulation using ASE. "
     "(use the run_nvt_md tool from the mace_md_specialist ) "
@@ -91,7 +96,8 @@ PROMPT_T3B = (
     f"the structure file {_tut('nacl_water_box.xyz')}, "
     "a box size of 20.0 Angstrom, "
     "a temperature of 300 K, and 10 steps. "
-    f"Save the trajectory to {_tut('nvt_nacl_water.traj')}."
+    f"Save the trajectory to {_tut('nvt_nacl_water.traj')} "
+    f"and the log file to {_tut('nvt_nacl_water.log')}."
 )
 
 # ── T4a: Ask LLM to write, register, and assign plot_nvt_trajectory ─────────────
