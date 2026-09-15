@@ -11,7 +11,8 @@ def run_nvt_md(
     log_interval: int = 10,
     log_file: str = "nvt.log",
     device: str = "cuda",
-    default_dtype: str = "float64",
+    default_dtype: str = "float32",
+    enable_cueq: bool = True,
     charge: int = 0,
     spin: int = 1,
     external_field: list = [0.0, 0.0, 0.0],
@@ -34,7 +35,10 @@ def run_nvt_md(
     log_interval   : int   -- write log every N steps (default 10)
     log_file       : str   -- path for the MDLogger output file
     device         : str   -- compute device: 'cuda' or 'cpu'
-    default_dtype  : str   -- 'float64' (default, more precise) or 'float32' (faster MD)
+    default_dtype  : str   -- 'float32' (default, faster MD, lower GPU memory) or 'float64' (more precise)
+    enable_cueq    : bool  -- use cuequivariance acceleration (default True) -- meaningfully
+                               reduces GPU memory use; requires the cuequivariance/
+                               cuequivariance-torch packages to be installed
     charge         : int   -- total system charge, set on atoms.info before the calculator runs
     spin           : int   -- spin multiplicity, set on atoms.info before the calculator runs
     external_field : sequence of 3 floats -- external field vector, set on atoms.info
@@ -63,7 +67,7 @@ def run_nvt_md(
 
     # Attach MACE polar calculator -- a named foundation model, downloaded
     # and cached automatically, no local .model file needed.
-    calculator = mace_polar(model=model_name, device=device, default_dtype=default_dtype)
+    calculator = mace_polar(model=model_name, device=device, default_dtype=default_dtype, enable_cueq=enable_cueq)
     atoms.info["charge"] = charge
     atoms.info["spin"] = spin
     atoms.info["external_field"] = list(external_field)
