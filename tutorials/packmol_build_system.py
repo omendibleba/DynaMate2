@@ -45,6 +45,9 @@ def packmol_build_system(
             'Packmol is not found in PATH. Please install or load it first.'
         )
 
+    output_dir = os.path.dirname(os.path.abspath(output_file))
+    os.makedirs(output_dir, exist_ok=True)
+
     # A real system temp file, not a bare relative filename -- the caller's
     # current working directory isn't guaranteed to be writable (e.g. a
     # read-only container root filesystem), while the OS temp directory is.

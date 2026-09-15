@@ -34,6 +34,7 @@ def run_nvt_md(
     -------
     str -- path to the written trajectory file
     """
+    import os
     import numpy as np
     from ase import units
     from ase.io import read
@@ -42,6 +43,9 @@ def run_nvt_md(
     from ase.md.langevin import Langevin
     from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
     from mace.calculators import MACECalculator
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_traj)), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)
 
     # Load structure and enforce PBC, and box size
     atoms = read(structure_file)
