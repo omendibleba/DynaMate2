@@ -14,7 +14,7 @@ def run_nvt_md(
     default_dtype: str = "float64",
     charge: int = 0,
     spin: int = 1,
-    external_field=(0.0, 0.0, 0.0),
+    external_field: list = [0.0, 0.0, 0.0],
 ) -> str:
     """
     Run an NVT molecular dynamics simulation using the Langevin thermostat using a MACE polar calculator.
