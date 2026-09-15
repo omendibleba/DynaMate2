@@ -74,13 +74,17 @@ shared a working container — you don't need to build, pull, or download anythi
    cd DynaMate2
    ./run.sh --gpu      # or ./run.sh for the lightweight CPU-only UI (no GPU needed)
    ```
-6. From your own machine, open a tunnel and browse. In PowerShell:
+6. From your own machine, open a tunnel and browse. In PowerShell, jump through your
+   cluster's login node (GPU compute nodes usually aren't reachable by direct SSH), naming
+   the compute node as the middle segment instead of `localhost`:
    ```powershell
-   ssh -L 8888:localhost:8888 <your-username>@<gpu-node-hostname>
+   ssh -L 8888:<gpu-node-hostname>:8888 <your-username>@<login-node-hostname>
+
+   # e.g.
+   ssh -L 8888:qa-a10-017.crc.nd.edu:8888 omendibl@crcfe01.crc.nd.edu
    ```
-   (or jump through the login node if direct SSH to compute nodes isn't allowed for you —
-   see [Connecting from Windows (PowerShell)](#connecting-from-windows-powershell) for both
-   forms.) Then open `http://localhost:8888` in your browser.
+   See [Connecting from Windows (PowerShell)](#connecting-from-windows-powershell) for more
+   detail. Then open `http://localhost:8888` in your browser.
 
 That's it. Since everyone clones their own copy in step 1, each person automatically gets
 their own private tools/agents/conversation history — see
@@ -164,17 +168,15 @@ install needed.
 
 1. **On the remote side**: start DynaMate2 as usual (`./run.sh` or `./run.sh --gpu`) and
    note which node it's actually running on (your terminal prompt, or `hostname`).
-2. **On your own machine, in PowerShell** — pick whichever matches how you normally reach
-   this cluster:
+2. **On your own machine, in PowerShell** — forward through your cluster's login node
+   (common on HPC clusters — e.g. Notre Dame's CRC: login nodes `crcfe01`/`crcfe02`, compute
+   nodes like `qa-a10-017.crc.nd.edu` — since GPU compute nodes usually aren't reachable by
+   direct SSH), naming the compute node as the middle segment instead of `localhost`:
    ```powershell
-   # If you can SSH directly to the node running DynaMate2:
-   ssh -L 8888:localhost:8888 <your-username>@<node-hostname>
-
-   # If your site only allows direct SSH to a login node, which can itself reach the
-   # compute node (common on HPC clusters — e.g. Notre Dame's CRC: login crcfe01/crcfe02,
-   # compute nodes like qa-a10-032.crc.nd.edu), forward through it by naming the compute
-   # node as the middle segment instead of localhost:
    ssh -L 8888:<compute-node-hostname>:8888 <your-username>@<login-node-hostname>
+
+   # e.g.
+   ssh -L 8888:qa-a10-017.crc.nd.edu:8888 omendibl@crcfe01.crc.nd.edu
    ```
    Using a different port (`DYNAMATE_PORT=...`)? Replace every `8888` above with that port,
    consistently. Leave this PowerShell window open for as long as you want the UI reachable
