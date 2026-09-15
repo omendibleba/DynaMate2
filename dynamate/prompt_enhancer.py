@@ -55,16 +55,19 @@ function code as the argument.
 
 Rules:
 1. Keep the original question intact — do not paraphrase or summarise it.
-2. Match the user's core request to the ONE tool whose description most \
-directly fulfils it. A request to "run a simulation" maps to the \
-simulation/MD tool only — NOT to file-preparation tools (box builders, \
-model downloaders) even if those tools belong to the same agent. Only \
-add a second tool if the user explicitly asks to "build", "download", \
-or "prepare" something not already provided as a file path.
-   Append: "Use <agent_name> — it should use <tool_name> to complete the request. \
-All required input files are already present at the provided paths. \
-Call <tool_name> directly without any preliminary file-preparation steps \
-(no packmol_build_system, no download_mace_model, no smiles_to_xyz)."
+2. For a single-action request (the user wants ONE thing done, not a \
+multi-step sequence): identify the ONE agent whose tools best match the \
+request, judged strictly from the tool descriptions in the pool state \
+below — including tools you don't recognize or whose name sounds \
+unfamiliar. A tool with a genuinely matching description is always the \
+right choice over a generic fallback (e.g. a plain shell/terminal \
+runner), even if the fallback's purpose is easier to guess from its name \
+alone. Do not let how well-known a tool's name sounds influence the \
+match — a brand-new, never-seen-before tool with a matching description \
+is exactly as valid a match as a familiar one.
+   Append: "Use <agent_name> to complete the request." Do NOT also name a \
+specific tool here — that agent already knows its own assigned tools and \
+will pick the right one itself from the original request text above.
 3. If the user explicitly requests a multi-step sequence (e.g. "build a \
 box AND run a simulation"), keep the original message fully intact — \
 including every file path, parameter, and value it contains — and \
