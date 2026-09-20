@@ -260,6 +260,13 @@ else
   export SINGULARITYENV_OPENAI_API_KEY="$OPENAI_API_KEY"
   export SINGULARITYENV_DYNAMATE_PORT="$PORT"
   export SINGULARITYENV_DYNAMATE_STATE_DIR="/app/ui_state"
+  if [ "$GPU" = "1" ]; then
+    # torch's JIT fuser (used inside mace_polar) NVRTC-compiles kernels at runtime and
+    # dlopens libnvrtc-builtins.so.13.0 by bare name; the image's pip-installed copy lives
+    # in nvidia/cu13/lib, which isn't on the default library search path.
+    export APPTAINERENV_LD_LIBRARY_PATH="/opt/conda/envs/dynamate2/lib/python3.10/site-packages/nvidia/cu13/lib"
+    export SINGULARITYENV_LD_LIBRARY_PATH="$APPTAINERENV_LD_LIBRARY_PATH"
+  fi
 
   echo "Open this in your browser once it's ready: http://localhost:${PORT}"
   echo "(On a remote HPC login/compute node, forward the port to your own machine first — e.g. ssh -L ${PORT}:localhost:${PORT} <host>.)"
