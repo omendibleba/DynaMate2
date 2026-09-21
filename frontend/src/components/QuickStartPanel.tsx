@@ -125,13 +125,13 @@ export function QuickStartPanel({ onSelectPrompt }: QuickStartPanelProps) {
               <div className="grid gap-2 sm:grid-cols-3">
                 <StepButton
                   label="T2 — Build NaCl + Water Box"
-                  hint="1 NaCl pair + 267 H₂O · 20 Å periodic box"
+                  hint="1 NaCl pair + 64 H₂O · 12.5 Å periodic box"
                   colorClass="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                   onClick={() => onSelectPrompt(prompts.t2)}
                 />
                 <StepButton
-                  label="T3 — Run NVT MD (10 steps, 300 K)"
-                  hint="MACE-MP-0b3 · ASE · nacl_water_box.xyz"
+                  label="T3 — Run NPT equilibration (200 steps, 300 K, 1 bar)"
+                  hint="MACE-Polar polar-1-m · ASE · nacl_water_box.xyz"
                   colorClass="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                   onClick={() => onSelectPrompt(prompts.t3b)}
                 />
