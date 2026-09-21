@@ -7,7 +7,7 @@ def run_nvt_md(
     output_traj: str = "nvt.traj",
     timestep_fs: float = 0.5,
     friction: float = 0.01,
-    traj_interval: int = 100,
+    traj_interval: int = None,
     log_interval: int = 10,
     log_file: str = "nvt.log",
     device: str = "cuda",
@@ -38,7 +38,8 @@ def run_nvt_md(
     output_traj    : str   -- path for the output ASE trajectory file
     timestep_fs    : float -- MD timestep in femtoseconds (default 0.5)
     friction       : float -- Langevin friction coefficient in 1/fs (default 0.01)
-    traj_interval  : int   -- write trajectory every N steps (default 100)
+    traj_interval  : int   -- write trajectory every N steps (default None = automatic: about 100
+                               frames per run, i.e. every step for runs of <=100 steps)
     log_interval   : int   -- write log every N steps (default 10)
     log_file       : str   -- path for the MDLogger output file
     device         : str   -- compute device: 'cuda' or 'cpu'
@@ -70,6 +71,9 @@ def run_nvt_md(
     from ase.optimize import FIRE
     from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
     from mace.calculators import mace_polar
+
+    if traj_interval is None:
+        traj_interval = max(1, n_steps // 100)
 
     os.makedirs(os.path.dirname(os.path.abspath(output_traj)), exist_ok=True)
     os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)

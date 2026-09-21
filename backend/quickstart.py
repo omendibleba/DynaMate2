@@ -129,6 +129,7 @@ PROMPT_T4A = (
 # ── T4b: Plot the NVT trajectory ────────────────────────────────────────────────
 PROMPT_T4B = (
     f"Plot the NVT trajectory at {_tut('nvt_nacl_water.traj')}. "
+    "The simulation has already been run -- do not run it again, only plot the existing file. "
     "Use a timestep of 0.5 fs. "
     f"Save the figure to {_tut('nvt_nacl_water_analysis.png')}."
 )
