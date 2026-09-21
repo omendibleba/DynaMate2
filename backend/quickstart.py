@@ -64,8 +64,7 @@ PROMPT_T2 = (
     f"First convert the water SMILES (O) to a 3D XYZ file at {_tut('water.xyz')}, "
     f"and the Na and CL ions with SMILES [Na+], and [Cl-] to {_tut('na.xyz')} and {_tut('cl.xyz')}. "
     "Then use packmol to build a cubic box of 12.5 Angstrom with 64 water molecules "
-    f"and 1 NaCl pair, and save the result to {_tut('nacl_water_box.xyz')}. "
-    "This step only builds the structure file -- do not run any simulation."
+    f"and 1 NaCl pair, and save the result to {_tut('nacl_water_box.xyz')}."
 )
 
 # ── T3a: Register run_nvt_md from .py file ──────────────────────────────────────
