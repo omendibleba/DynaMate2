@@ -53,8 +53,8 @@ PROMPT_T1B = (
 # ── T1c: Create mace_md_specialist ──────────────────────────────────────────────
 PROMPT_T1C = (
     "\n"
-    "I need a dedicated specialist in MACE and molecular dynamics simulations.\n"
-    "Please create one and give it the three tools I just added.\n\n"
+    "Please create a new agent named mace_md_specialist -- a dedicated specialist in MACE "
+    "and molecular dynamics simulations -- and give it the tools I just added.\n\n"
     "\n"
 )
 
@@ -68,16 +68,19 @@ PROMPT_T2 = (
 )
 
 # ── T3a: Register run_nvt_md from .py file ──────────────────────────────────────
-# Wording matters. Tested through the real chat API (fresh and already-registered
-# cases, several runs each): "...update it if it already exists" and plain
-# "load/register the tool from <file>" sometimes leave a stale registered
-# version in place while reporting success, and "add the tools ..." variants
-# tended to chain into a stray download_mace_model call. Stating that the FILE
-# HAS CHANGED and asking to update the tool from it reliably re-registered
-# (5/5) without naming any internal tool or adding "don't skip" hedging.
+# Wording matters -- tested through the real chat API from a fresh state (T1b, T1c
+# done, then this prompt), 4 runs per wording. This explicit imperative was the
+# only one that was clean 4/4. Plainer wordings ("register/load the tool from
+# <file>", "the file has changed, update it") registered fine but sometimes
+# carried on into a stray packmol/download call and ended in an error; and
+# "...update it if it already exists" made tool_manager treat "already exists"
+# as a reason to skip the call entirely.
 PROMPT_T3A = (
-    f"The file {_tut('ASE_NVT_PBC.py')} has changed. "
-    "Update the run_nvt_md tool from it and make sure mace_md_specialist has it."
+    f"Please re-register the tools defined in the file {_tut('ASE_NVT_PBC.py')} — "
+    "call register_tool_from_file with this exact path now, even if a tool by this "
+    "name is already registered, since the file's contents may have changed since "
+    "it was last registered. Do not skip this step just because the tool already "
+    "exists. Then assign the run_nvt_md tool to mace_md_specialist."
 )
 
 # ── T3b: Run NPT equilibration (via run_nvt_md, pressure_bar set) ─────────────────────────────────────────────────────────────
@@ -94,7 +97,8 @@ PROMPT_T3B = (
     f"Use the structure file {_tut('nacl_water_box.xyz')}, "
     "a starting box size of 12.5 Angstrom, "
     "a temperature of 300 K, a pressure of 1 bar (pressure_bar=1.0), "
-    "50 geometry-optimization steps first (minimize_steps=50), and 200 MD steps. "
+    "50 geometry-optimization steps first (minimize_steps=50), and 100 MD steps, "
+    "saving a trajectory frame every step (traj_interval=1). "
     f"Save the trajectory to {_tut('nvt_nacl_water.traj')} "
     f"and the log file to {_tut('nvt_nacl_water.log')}."
 )

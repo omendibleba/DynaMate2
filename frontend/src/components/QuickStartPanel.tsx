@@ -130,7 +130,7 @@ export function QuickStartPanel({ onSelectPrompt }: QuickStartPanelProps) {
                   onClick={() => onSelectPrompt(prompts.t2)}
                 />
                 <StepButton
-                  label="T3 — Run NPT equilibration (200 steps, 300 K, 1 bar)"
+                  label="T3 — Run NPT equilibration (100 steps, 300 K, 1 bar)"
                   hint="MACE-Polar polar-1-m · ASE · nacl_water_box.xyz"
                   colorClass="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                   onClick={() => onSelectPrompt(prompts.t3b)}
