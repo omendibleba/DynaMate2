@@ -57,6 +57,9 @@ def packmol_build_system(
         f.write(f'tolerance {tolerance}\n')
         f.write('filetype xyz\n')
         f.write(f'output {output_file}\n')
+        # periodic boundary conditions: without this, molecules near opposite
+        # faces overlap once the box is treated as periodic in the MD run
+        f.write(f'pbc 0. 0. 0. {box_size} {box_size} {box_size}\n')
         f.write('seed 12345\n\n')
         for xyz, n in zip(xyz_files, n_molecules):
             f.write(f'structure {xyz}\n')

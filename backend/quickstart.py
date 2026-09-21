@@ -60,10 +60,10 @@ PROMPT_T1C = (
 
 # ── T2: Build NaCl + water box ──────────────────────────────────────────────────
 PROMPT_T2 = (
-    "I need a periodic simulation box containing 1 Na(+1), 1 Cl(-1) ions  and 267 water molecules. "
+    "I need a periodic simulation box containing 1 Na(+1), 1 Cl(-1) ions  and 64 water molecules. "
     f"First convert the water SMILES (O) to a 3D XYZ file at {_tut('water.xyz')}, "
     f"and the Na and CL ions with SMILES [Na+], and [Cl-] to {_tut('na.xyz')} and {_tut('cl.xyz')}. "
-    "Then use packmol to build a cubic box of 20.0 Angstrom with 267 water molecules "
+    "Then use packmol to build a cubic box of 12.5 Angstrom with 64 water molecules "
     f"and 1 NaCl pair, and save the result to {_tut('nacl_water_box.xyz')}."
 )
 
@@ -82,20 +82,21 @@ PROMPT_T3A = (
     "exists. Then assign the run_nvt_md tool to mace_md_specialist."
 )
 
-# ── T3b: Run NVT MD ─────────────────────────────────────────────────────────────
+# ── T3b: Run NPT equilibration (via run_nvt_md, pressure_bar set) ─────────────────────────────────────────────────────────────
 # NOTE: both output_traj AND log_file must be given explicit paths here.
 # run_nvt_md's log_file defaults to a bare relative filename ("nvt.log") --
 # leaving it unspecified means the agent falls back to that default, which
 # resolves under the container's read-only root ("Read-only file system:
 # 'nvt.log'") rather than the writable, persisted tutorials/ directory.
 PROMPT_T3B = (
-    "Please run a short NVT molecular dynamics simulation using ASE. "
-    "(use the run_nvt_md tool from the mace_md_specialist ) "
+    "Please run a short NPT molecular dynamics equilibration using ASE, so the box density can relax. "
+    "(use the run_nvt_md tool from the mace_md_specialist -- it runs NPT when given a pressure) "
     "Use the MACE polar foundation model 'polar-1-m' -- run_nvt_md loads it by name "
     "itself, so do NOT call download_mace_model and do NOT look for a model file. "
     f"Use the structure file {_tut('nacl_water_box.xyz')}, "
-    "a box size of 20.0 Angstrom, "
-    "a temperature of 300 K, and 10 steps. "
+    "a starting box size of 12.5 Angstrom, "
+    "a temperature of 300 K, a pressure of 1 bar (pressure_bar=1.0), "
+    "50 geometry-optimization steps first (minimize_steps=50), and 200 MD steps. "
     f"Save the trajectory to {_tut('nvt_nacl_water.traj')} "
     f"and the log file to {_tut('nvt_nacl_water.log')}."
 )

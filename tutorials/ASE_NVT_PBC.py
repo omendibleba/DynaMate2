@@ -16,9 +16,16 @@ def run_nvt_md(
     charge: int = 0,
     spin: int = 1,
     external_field: list = [0.0, 0.0, 0.0],
+    pressure_bar: float = None,
+    minimize_steps: int = 0,
+    fmax: float = 0.5,
 ) -> str:
     """
-    Run an NVT molecular dynamics simulation using the Langevin thermostat using a MACE polar calculator.
+    Run a molecular dynamics simulation with a MACE polar calculator: NVT (Langevin
+    thermostat) by default, or NPT (Berendsen thermostat + barostat, cell size
+    changes so the density equilibrates) if pressure_bar is given. Optionally
+    relaxes the structure first (minimize_steps > 0) to remove bad contacts left
+    by packing.
 
     Parameters
     ----------
@@ -42,6 +49,11 @@ def run_nvt_md(
     charge         : int   -- total system charge, set on atoms.info before the calculator runs
     spin           : int   -- spin multiplicity, set on atoms.info before the calculator runs
     external_field : sequence of 3 floats -- external field vector, set on atoms.info
+    pressure_bar   : float -- if given (e.g. 1.0), run NPT at this pressure in bar instead of NVT;
+                               box_size is then only the STARTING cell (default None = NVT)
+    minimize_steps : int   -- max geometry-optimization (FIRE) steps before MD; 0 = skip (default).
+                               Recommended (e.g. 50) when the structure comes straight from packmol
+    fmax           : float -- force convergence target for the optimization, eV/A (default 0.5)
 
     Returns
     -------
@@ -54,6 +66,8 @@ def run_nvt_md(
     from ase.io.trajectory import Trajectory
     from ase.md import MDLogger
     from ase.md.langevin import Langevin
+    from ase.md.nptberendsen import NPTBerendsen
+    from ase.optimize import FIRE
     from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
     from mace.calculators import mace_polar
 
@@ -73,16 +87,31 @@ def run_nvt_md(
     atoms.info["external_field"] = list(external_field)
     atoms.calc = calculator
 
+    if minimize_steps and minimize_steps > 0:
+        FIRE(atoms, logfile=None).run(fmax=fmax, steps=minimize_steps)
+
     # Initialise velocities from Maxwell-Boltzmann distribution
     MaxwellBoltzmannDistribution(atoms, temperature_K=temperature_K)
 
-    # Set up Langevin thermostat
-    dyn = Langevin(
-        atoms,
-        timestep=timestep_fs * units.fs,
-        temperature_K=temperature_K,
-        friction=friction / units.fs,
-    )
+    if pressure_bar is None:
+        dyn = Langevin(
+            atoms,
+            timestep=timestep_fs * units.fs,
+            temperature_K=temperature_K,
+            friction=friction / units.fs,
+        )
+    else:
+        # Berendsen weak-coupling: robust for equilibrating density (does not
+        # sample the exact NPT ensemble). Compressibility is that of liquid water.
+        dyn = NPTBerendsen(
+            atoms,
+            timestep=timestep_fs * units.fs,
+            temperature_K=temperature_K,
+            taut=100 * units.fs,
+            pressure_au=pressure_bar * units.bar,
+            taup=1000 * units.fs,
+            compressibility_au=4.57e-5 / units.bar,
+        )
 
     # Print energy and density at each log interval
     def print_properties():
@@ -122,7 +151,7 @@ if __name__ == "__main__":
     # ── Edit these paths/values before running ─────────────────────────────────
     MODEL_NAME     = "polar-1-m"
     STRUCTURE_FILE = os.path.join(os.path.dirname(__file__), "nacl_water_box.xyz")
-    BOX_SIZE       = 20.0   # Å  (matches the box built by packmol in T2.1)
+    BOX_SIZE       = 12.5   # Å  (matches the box built by packmol in T2.1)
     TEMPERATURE_K  = 300.0  # K
     N_STEPS        = 100    # short run for testing
     OUTPUT_TRAJ    = "test_nvt.traj"

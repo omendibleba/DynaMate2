@@ -134,10 +134,10 @@ PROMPT_T1C = (
 # Mirrors paper_tests_7 cell 27 — query_T2
 # Notebook uses os.path.join('./', ...) from tutorials/; we use absolute paths.
 PROMPT_T2 = (
-    "I need a periodic simulation box containing 1 Na(+1), 1 Cl(-1) ions  and 267 water molecules. "
+    "I need a periodic simulation box containing 1 Na(+1), 1 Cl(-1) ions  and 64 water molecules. "
     f"First convert the water SMILES (O) to a 3D XYZ file at {_tut('water.xyz')}, "
     f"and the Na and CL ions with SMILES [Na+], and [Cl-] to {_tut('na.xyz')} and {_tut('cl.xyz')}. "
-    "Then use packmol to build a cubic box of 20.0 Angstrom with 267 water molecules "
+    "Then use packmol to build a cubic box of 12.5 Angstrom with 64 water molecules "
     f"and 1 NaCl pair, and save the result to {_tut('nacl_water_box.xyz')}."
 )
 
@@ -156,7 +156,7 @@ PROMPT_T3B = (
     "(use the run_nvt_md tool from the mace_md_specialist ) "
     f"Use the MACE model at {_tut('models/mace-mp-0b3-medium.model')}, "
     f"the structure file {_tut('nacl_water_box.xyz')}, "
-    "a box size of 20.0 Angstrom, "
+    "a box size of 12.5 Angstrom, "
     "a temperature of 300 K, and 10 steps. "
     f"Save the trajectory to {_tut('nvt_nacl_water.traj')}."
 )
@@ -658,7 +658,7 @@ with gr.Blocks(title="DynaMate2") as demo:
                         elem_classes=["btn-run"], size="sm",
                     )
                     gr.HTML('<p style="font-size:0.72rem;color:#64748b;margin:0.2rem 0 0 0;">'
-                            '1 NaCl pair + 267 H₂O · 20 Å periodic box</p>')
+                            '1 NaCl pair + 64 H₂O · 12.5 Å periodic box</p>')
                 with gr.Column(scale=1):
                     t3b_btn = gr.Button(
                         "T3 — Run NVT MD (10 steps, 300 K)",

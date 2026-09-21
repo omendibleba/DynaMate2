@@ -269,8 +269,8 @@ def test_enhancer_preserves_original_message_for_multistep_prompts(client):
         "water.xyz",
         "na.xyz",
         "cl.xyz",
-        "20.0 Angstrom",
-        "267 water molecules",
+        "12.5 Angstrom",
+        "64 water molecules",
         "nacl_water_box.xyz",
     ]:
         assert original_line in enhanced, (
