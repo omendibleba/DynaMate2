@@ -1,4 +1,4 @@
-def smiles_to_xyz(smiles: str, output_path: str = 'molecule.xyz') -> str:
+def smiles_to_xyz(smiles: str, output_path: str = 'molecule.xyz', random_seed: int = 42) -> str:
     """
     Convert a SMILES string to a 3D XYZ file using RDKit.
 
@@ -10,6 +10,12 @@ def smiles_to_xyz(smiles: str, output_path: str = 'molecule.xyz') -> str:
     ----------
     smiles      : str -- SMILES string of the molecule
     output_path : str -- path for the output .xyz file
+    random_seed : int -- seed for ETKDG conformer generation (default 42).
+                          Fixed rather than RDKit's default (-1, system-entropy-based)
+                          so the same SMILES always embeds to the same starting geometry --
+                          without this, a downstream packmol build using this structure can
+                          differ run to run, occasionally producing close contacts that make
+                          geometry optimization or MD unexpectedly slow or unstable.
 
     Returns
     -------
@@ -27,7 +33,9 @@ def smiles_to_xyz(smiles: str, output_path: str = 'molecule.xyz') -> str:
     if mol is None:
         raise ValueError(f'Invalid SMILES: {smiles}')
     mol = Chem.AddHs(mol)
-    if AllChem.EmbedMolecule(mol, AllChem.ETKDG()) != 0:
+    params = AllChem.ETKDG()
+    params.randomSeed = random_seed
+    if AllChem.EmbedMolecule(mol, params) != 0:
         raise RuntimeError('3D embedding failed for SMILES: ' + smiles)
     AllChem.UFFOptimizeMolecule(mol)
     conf = mol.GetConformer()
