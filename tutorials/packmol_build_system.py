@@ -27,6 +27,7 @@ def packmol_build_system(
     import subprocess
     import os
     import tempfile
+    import time
 
     if isinstance(xyz_files, str):
         xyz_files = [xyz_files]
@@ -38,6 +39,23 @@ def packmol_build_system(
     if os.path.exists(output_file):
         print(f"Output file '{output_file}' already exists. Skipping Packmol build.")
         return output_file
+
+    # The agent calling this tool often also just called smiles_to_xyz (or
+    # similar) to produce these same xyz_files, in the same turn. LangGraph's
+    # ToolNode can dispatch multiple tool calls from one turn concurrently via
+    # a thread pool, so this tool can start running before that write has
+    # landed on disk even though the prompt said "first...then". Wait briefly
+    # for each input file to appear rather than failing immediately.
+    for xyz in xyz_files:
+        waited = 0.0
+        while not os.path.exists(xyz) and waited < 15.0:
+            time.sleep(0.25)
+            waited += 0.25
+        if not os.path.exists(xyz):
+            raise FileNotFoundError(
+                f"Required input file '{xyz}' never appeared (waited {waited:.1f}s). "
+                "It may not have been generated yet, or generation failed."
+            )
 
     if subprocess.call(['which', 'packmol'],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
