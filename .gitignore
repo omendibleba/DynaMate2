@@ -27,7 +27,7 @@ tutorials/*.png
 !tutorials/sample_outputs/**
 
 # ── State directories (auto-generated at runtime) ────────────────────────────
-tutorials/paper_tests_*_state/
+tutorials/tutorial_state/
 
 # ── Large model binaries ──────────────────────────────────────────────────────
 tutorials/models/
