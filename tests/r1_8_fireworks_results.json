@@ -1,0 +1,30 @@
+{
+  "submission_result": {
+    "fw_ids": {
+      "310": 1,
+      "290": 2
+    },
+    "wf_id": 1,
+    "launchpad": "{\"host\": \"localhost\", \"port\": 27117, \"name\": \"dynamate2_fireworks_demo\", \"username\": null, \"password\": null, \"logdir\": null, \"strm_lvl\": \"INFO\", \"user_indices\": [], \"wf_user_indices\": [], \"authsource\": \"dynamate2_fireworks_demo\", \"uri_mode\": false, \"mongoclient_kwargs\": {\"socketTimeoutMS\": 300000}}"
+  },
+  "status_before": {
+    "1": {
+      "state": "READY",
+      "launch_dir": null
+    },
+    "2": {
+      "state": "READY",
+      "launch_dir": null
+    }
+  },
+  "status_after": {
+    "1": {
+      "state": "COMPLETED",
+      "launch_dir": "/scratchpad/launcher_2026-09-28-16-32-17-478147"
+    },
+    "2": {
+      "state": "COMPLETED",
+      "launch_dir": "/scratchpad/launcher_2026-09-28-16-33-17-756590"
+    }
+  }
+}
