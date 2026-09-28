@@ -1,0 +1,9 @@
+{
+  "energy_eV": -8985.390115018474,
+  "method": "GFN2-xTB",
+  "charge": 0,
+  "spin_multiplicity": 1,
+  "structure_file": "/app/tutorials/sample_outputs/end_to_end_test/r3_2_md.traj",
+  "frame_index": -1,
+  "output_json": "/app/tutorials/sample_outputs/end_to_end_test/r3_2_dft_single_point.json"
+}

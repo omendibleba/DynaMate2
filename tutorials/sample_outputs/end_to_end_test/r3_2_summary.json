@@ -1,0 +1,47 @@
+{
+  "initial_steps": 14,
+  "total_md_steps": 46,
+  "convergence_check_params": {
+    "window_frames": 5,
+    "tolerance_percent": 0.05
+  },
+  "extension_log": [
+    {
+      "total_steps": 14,
+      "converged": 0.0,
+      "density_g_per_cm3_recent": 1.0312259776108774,
+      "density_g_per_cm3_previous": 1.0306442698389326,
+      "percent_change": 0.056441178490778496,
+      "n_frames_available": 15.0,
+      "recommendation": "extend_equilibration"
+    },
+    {
+      "total_steps": 30,
+      "converged": 0.0,
+      "density_g_per_cm3_recent": 1.0311296420397826,
+      "density_g_per_cm3_previous": 1.0302687343642372,
+      "percent_change": 0.08356146768607198,
+      "n_frames_available": 17.0,
+      "recommendation": "extend_equilibration"
+    },
+    {
+      "total_steps": 46,
+      "converged": 1.0,
+      "density_g_per_cm3_recent": 1.0316124531828137,
+      "density_g_per_cm3_previous": 1.0311189980007032,
+      "percent_change": 0.04785627876775755,
+      "n_frames_available": 17.0,
+      "recommendation": "proceed"
+    }
+  ],
+  "converged": true,
+  "dft_result": {
+    "energy_eV": -8985.390115018474,
+    "method": "GFN2-xTB",
+    "charge": 0,
+    "spin_multiplicity": 1,
+    "structure_file": "/app/tutorials/sample_outputs/end_to_end_test/r3_2_md.traj",
+    "frame_index": -1,
+    "output_json": "/app/tutorials/sample_outputs/end_to_end_test/r3_2_dft_single_point.json"
+  }
+}
