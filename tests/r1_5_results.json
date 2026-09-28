@@ -1,0 +1,1374 @@
+{
+  "gpt-4o-mini__full": [
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Convert the SMILES string 'CCO' into a 3D XYZ structure and save it to ethanol.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "CCO",
+        "output_path": "ethanol.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9329776763916016
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "I have a SMILES 'O' for water -- generate 3D coordinates and write them to water.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "O",
+        "output_path": "water.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8759446144104004
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Turn this SMILES into a molecule file: c1ccccc1, save as benzene.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "c1ccccc1",
+        "output_path": "benzene.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7881379127502441
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Build a periodic simulation box of 15 Angstrom containing 30 copies of water.xyz using packmol.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "water.xyz",
+        "box_size": 15,
+        "n_molecules": 30
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7238774299621582
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Pack 10 molecules from methane.xyz into a cubic box of size 10 Angstrom and save the result to box.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "methane.xyz",
+        "box_size": 10,
+        "n_molecules": 10,
+        "output_file": "box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8785791397094727
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Use packmol to place 5 copies of ion.xyz and 50 copies of water.xyz into a 20 Angstrom box, saved to mix.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "ion.xyz",
+          "water.xyz"
+        ],
+        "box_size": 20,
+        "n_molecules": [
+          5,
+          50
+        ],
+        "output_file": "mix.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.796278715133667
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Run a 200-step NVT molecular dynamics simulation at 300 K on structure.xyz using MACE, saving the trajectory to traj.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "structure.xyz",
+        "box_size": 20.0,
+        "temperature_K": 300,
+        "n_steps": 200,
+        "output_traj": "traj.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8745689392089844
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Simulate NPT dynamics on box.xyz at 310 K and 1 bar for 500 steps with a MACE potential, save to result.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "box.xyz",
+        "box_size": 30,
+        "temperature_K": 310,
+        "n_steps": 500,
+        "model_name": "polar-1-m",
+        "output_traj": "result.traj",
+        "pressure_bar": 1
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.1304221153259277
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Perform molecular dynamics on water_box.xyz for 1000 steps at 350 K using the MACE polar model 'polar-1-m', output to sim.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "water_box.xyz",
+        "box_size": 30.0,
+        "temperature_K": 350,
+        "n_steps": 1000,
+        "model_name": "polar-1-m",
+        "output_traj": "sim.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8335886001586914
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Plot the potential energy and temperature over time from the trajectory nvt.traj and save it as analysis.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "nvt.traj",
+        "output_png": "analysis.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7076840400695801
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Generate a figure showing energy and temperature vs time from run.traj, output to plot.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "run.traj",
+        "output_png": "plot.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8933670520782471
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Create a chart of the MD trajectory data in sim.traj using a timestep of 1.0 fs, save the image as result.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "sim.traj",
+        "output_png": "result.png",
+        "timestep_fs": 1.0
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7797880172729492
+    }
+  ],
+  "gpt-4o-mini__no_types": [
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Convert the SMILES string 'CCO' into a 3D XYZ structure and save it to ethanol.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "CCO",
+        "output_path": "ethanol.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.713202714920044
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "I have a SMILES 'O' for water -- generate 3D coordinates and write them to water.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "O",
+        "output_path": "water.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.5394513607025146
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Turn this SMILES into a molecule file: c1ccccc1, save as benzene.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "c1ccccc1",
+        "output_path": "benzene.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.599644660949707
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Build a periodic simulation box of 15 Angstrom containing 30 copies of water.xyz using packmol.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "water.xyz",
+        "box_size": 15,
+        "n_molecules": 30
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.6790201663970947
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Pack 10 molecules from methane.xyz into a cubic box of size 10 Angstrom and save the result to box.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "methane.xyz",
+        "box_size": 10,
+        "n_molecules": 10,
+        "output_file": "box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.13619065284729
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Use packmol to place 5 copies of ion.xyz and 50 copies of water.xyz into a 20 Angstrom box, saved to mix.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "ion.xyz",
+          "water.xyz"
+        ],
+        "box_size": 20,
+        "n_molecules": [
+          5,
+          50
+        ],
+        "output_file": "mix.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8311574459075928
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Run a 200-step NVT molecular dynamics simulation at 300 K on structure.xyz using MACE, saving the trajectory to traj.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "structure.xyz",
+        "box_size": 10,
+        "temperature_K": 300,
+        "n_steps": 200,
+        "output_traj": "traj.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7145676612854004
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Simulate NPT dynamics on box.xyz at 310 K and 1 bar for 500 steps with a MACE potential, save to result.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "box.xyz",
+        "box_size": 30,
+        "temperature_K": 310,
+        "n_steps": 500,
+        "model_name": "polar-1-m",
+        "output_traj": "result.traj",
+        "pressure_bar": 1
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7919824123382568
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Perform molecular dynamics on water_box.xyz for 1000 steps at 350 K using the MACE polar model 'polar-1-m', output to sim.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "water_box.xyz",
+        "box_size": 30,
+        "temperature_K": 350,
+        "n_steps": 1000,
+        "model_name": "polar-1-m",
+        "output_traj": "sim.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7894389629364014
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Plot the potential energy and temperature over time from the trajectory nvt.traj and save it as analysis.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "nvt.traj",
+        "output_png": "analysis.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.5685405731201172
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Generate a figure showing energy and temperature vs time from run.traj, output to plot.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "run.traj",
+        "output_png": "plot.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7160465717315674
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Create a chart of the MD trajectory data in sim.traj using a timestep of 1.0 fs, save the image as result.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "sim.traj",
+        "output_png": "result.png",
+        "timestep_fs": 1.0
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8974957466125488
+    }
+  ],
+  "gpt-4o-mini__one_line": [
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Convert the SMILES string 'CCO' into a 3D XYZ structure and save it to ethanol.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "CCO",
+        "output_path": "ethanol.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.6795766353607178
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "I have a SMILES 'O' for water -- generate 3D coordinates and write them to water.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "O",
+        "output_path": "water.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.6910099983215332
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Turn this SMILES into a molecule file: c1ccccc1, save as benzene.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "c1ccccc1",
+        "output_path": "benzene.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.6875958442687988
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Build a periodic simulation box of 15 Angstrom containing 30 copies of water.xyz using packmol.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "water.xyz",
+        "box_size": 15,
+        "n_molecules": 30
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8269650936126709
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Pack 10 molecules from methane.xyz into a cubic box of size 10 Angstrom and save the result to box.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "methane.xyz",
+        "box_size": 10,
+        "n_molecules": 10,
+        "output_file": "box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8382866382598877
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Use packmol to place 5 copies of ion.xyz and 50 copies of water.xyz into a 20 Angstrom box, saved to mix.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "ion.xyz",
+          "water.xyz"
+        ],
+        "box_size": 20,
+        "n_molecules": [
+          5,
+          50
+        ],
+        "output_file": "mix.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7541146278381348
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Run a 200-step NVT molecular dynamics simulation at 300 K on structure.xyz using MACE, saving the trajectory to traj.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "structure.xyz",
+        "box_size": 10,
+        "temperature_K": 300,
+        "n_steps": 200,
+        "output_traj": "traj.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.0538253784179688
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Simulate NPT dynamics on box.xyz at 310 K and 1 bar for 500 steps with a MACE potential, save to result.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "box.xyz",
+        "box_size": 10,
+        "temperature_K": 310,
+        "n_steps": 500,
+        "model_name": "polar-1-m",
+        "output_traj": "result.traj",
+        "pressure_bar": 1
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9164230823516846
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Perform molecular dynamics on water_box.xyz for 1000 steps at 350 K using the MACE polar model 'polar-1-m', output to sim.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "water_box.xyz",
+        "box_size": 10,
+        "temperature_K": 350,
+        "n_steps": 1000,
+        "model_name": "polar-1-m",
+        "output_traj": "sim.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.837226390838623
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Plot the potential energy and temperature over time from the trajectory nvt.traj and save it as analysis.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "nvt.traj",
+        "output_png": "analysis.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.6938397884368896
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Generate a figure showing energy and temperature vs time from run.traj, output to plot.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "run.traj",
+        "output_png": "plot.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.5747458934783936
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Create a chart of the MD trajectory data in sim.traj using a timestep of 1.0 fs, save the image as result.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "sim.traj",
+        "output_png": "result.png",
+        "timestep_fs": 1.0
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7644262313842773
+    }
+  ],
+  "gpt-4o-mini__none": [
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Convert the SMILES string 'CCO' into a 3D XYZ structure and save it to ethanol.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "CCO",
+        "output_path": "ethanol.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.6812775135040283
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "I have a SMILES 'O' for water -- generate 3D coordinates and write them to water.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "O",
+        "output_path": "water.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.045198678970337
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Turn this SMILES into a molecule file: c1ccccc1, save as benzene.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "c1ccccc1",
+        "output_path": "benzene.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7222063541412354
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Build a periodic simulation box of 15 Angstrom containing 30 copies of water.xyz using packmol.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "water.xyz"
+        ],
+        "box_size": 15,
+        "n_molecules": 30
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7731726169586182
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Pack 10 molecules from methane.xyz into a cubic box of size 10 Angstrom and save the result to box.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "methane.xyz"
+        ],
+        "box_size": 10,
+        "n_molecules": 10,
+        "output_file": "box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8553824424743652
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Use packmol to place 5 copies of ion.xyz and 50 copies of water.xyz into a 20 Angstrom box, saved to mix.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "ion.xyz",
+          "water.xyz"
+        ],
+        "box_size": 20,
+        "n_molecules": [
+          5,
+          50
+        ],
+        "output_file": "mix.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7390282154083252
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Run a 200-step NVT molecular dynamics simulation at 300 K on structure.xyz using MACE, saving the trajectory to traj.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "structure.xyz",
+        "box_size": 10.0,
+        "temperature_K": 300,
+        "n_steps": 200,
+        "model_name": "polar-1-m",
+        "output_traj": "traj.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7778873443603516
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Simulate NPT dynamics on box.xyz at 310 K and 1 bar for 500 steps with a MACE potential, save to result.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "box.xyz",
+        "box_size": 0,
+        "temperature_K": 310,
+        "n_steps": 500,
+        "model_name": "mace",
+        "output_traj": "result.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": false,
+      "elapsed": 0.8164033889770508
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Perform molecular dynamics on water_box.xyz for 1000 steps at 350 K using the MACE polar model 'polar-1-m', output to sim.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "water_box.xyz",
+        "box_size": 30,
+        "temperature_K": 350,
+        "n_steps": 1000,
+        "model_name": "polar-1-m",
+        "output_traj": "sim.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8874835968017578
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Plot the potential energy and temperature over time from the trajectory nvt.traj and save it as analysis.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "nvt.traj",
+        "output_png": "analysis.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.873955488204956
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Generate a figure showing energy and temperature vs time from run.traj, output to plot.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "run.traj",
+        "output_png": "plot.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.6652123928070068
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Create a chart of the MD trajectory data in sim.traj using a timestep of 1.0 fs, save the image as result.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "sim.traj",
+        "output_png": "result.png",
+        "timestep_fs": 1.0
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.6671466827392578
+    }
+  ],
+  "gpt-6-luna__full": [
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Convert the SMILES string 'CCO' into a 3D XYZ structure and save it to ethanol.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "CCO",
+        "output_path": "ethanol.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.1185734272003174
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "I have a SMILES 'O' for water -- generate 3D coordinates and write them to water.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "O",
+        "output_path": "water.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9037342071533203
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Turn this SMILES into a molecule file: c1ccccc1, save as benzene.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "c1ccccc1",
+        "output_path": "benzene.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9669454097747803
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Build a periodic simulation box of 15 Angstrom containing 30 copies of water.xyz using packmol.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "water.xyz",
+        "box_size": 15,
+        "n_molecules": 30,
+        "output_file": "water_box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.1558136940002441
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Pack 10 molecules from methane.xyz into a cubic box of size 10 Angstrom and save the result to box.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "methane.xyz",
+        "box_size": 10,
+        "n_molecules": 10,
+        "output_file": "box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.7668404579162598
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Use packmol to place 5 copies of ion.xyz and 50 copies of water.xyz into a 20 Angstrom box, saved to mix.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "ion.xyz",
+          "water.xyz"
+        ],
+        "box_size": 20,
+        "n_molecules": [
+          5,
+          50
+        ],
+        "output_file": "mix.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.1324231624603271
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Run a 200-step NVT molecular dynamics simulation at 300 K on structure.xyz using MACE, saving the trajectory to traj.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "structure.xyz",
+        "box_size": 20,
+        "temperature_K": 300,
+        "n_steps": 200,
+        "model_name": "polar-1-m",
+        "output_traj": "traj.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.4419140815734863
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Simulate NPT dynamics on box.xyz at 310 K and 1 bar for 500 steps with a MACE potential, save to result.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "box.xyz",
+        "box_size": 0,
+        "temperature_K": 310,
+        "n_steps": 500,
+        "pressure_bar": 1,
+        "output_traj": "result.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.1792573928833008
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Perform molecular dynamics on water_box.xyz for 1000 steps at 350 K using the MACE polar model 'polar-1-m', output to sim.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "water_box.xyz",
+        "box_size": 20,
+        "temperature_K": 350,
+        "n_steps": 1000,
+        "model_name": "polar-1-m",
+        "output_traj": "sim.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.1516292095184326
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Plot the potential energy and temperature over time from the trajectory nvt.traj and save it as analysis.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "nvt.traj",
+        "output_png": "analysis.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.078324317932129
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Generate a figure showing energy and temperature vs time from run.traj, output to plot.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "run.traj",
+        "output_png": "plot.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.040947675704956
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Create a chart of the MD trajectory data in sim.traj using a timestep of 1.0 fs, save the image as result.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "sim.traj",
+        "output_png": "result.png",
+        "timestep_fs": 1.0
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9614565372467041
+    }
+  ],
+  "gpt-6-luna__no_types": [
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Convert the SMILES string 'CCO' into a 3D XYZ structure and save it to ethanol.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "CCO",
+        "output_path": "ethanol.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8561825752258301
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "I have a SMILES 'O' for water -- generate 3D coordinates and write them to water.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "O",
+        "output_path": "water.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.4179952144622803
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Turn this SMILES into a molecule file: c1ccccc1, save as benzene.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "c1ccccc1",
+        "output_path": "benzene.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9741120338439941
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Build a periodic simulation box of 15 Angstrom containing 30 copies of water.xyz using packmol.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "water.xyz",
+        "box_size": 15,
+        "n_molecules": 30,
+        "output_file": "water_box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.0002493858337402
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Pack 10 molecules from methane.xyz into a cubic box of size 10 Angstrom and save the result to box.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "methane.xyz"
+        ],
+        "box_size": 10,
+        "n_molecules": 10,
+        "output_file": "box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 8.303186178207397
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Use packmol to place 5 copies of ion.xyz and 50 copies of water.xyz into a 20 Angstrom box, saved to mix.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "ion.xyz",
+          "water.xyz"
+        ],
+        "box_size": 20,
+        "n_molecules": [
+          5,
+          50
+        ],
+        "output_file": "mix.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.065377950668335
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Run a 200-step NVT molecular dynamics simulation at 300 K on structure.xyz using MACE, saving the trajectory to traj.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "structure.xyz",
+        "box_size": 20,
+        "temperature_K": 300,
+        "n_steps": 200,
+        "model_name": "polar-1-m",
+        "output_traj": "traj.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9924507141113281
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Simulate NPT dynamics on box.xyz at 310 K and 1 bar for 500 steps with a MACE potential, save to result.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "box.xyz",
+        "box_size": 0,
+        "temperature_K": 310,
+        "n_steps": 500,
+        "pressure_bar": 1,
+        "output_traj": "result.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.035963535308838
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Perform molecular dynamics on water_box.xyz for 1000 steps at 350 K using the MACE polar model 'polar-1-m', output to sim.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "water_box.xyz",
+        "temperature_K": 350,
+        "n_steps": 1000,
+        "model_name": "polar-1-m",
+        "output_traj": "sim.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.2248094081878662
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Plot the potential energy and temperature over time from the trajectory nvt.traj and save it as analysis.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "nvt.traj",
+        "output_png": "analysis.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.2987563610076904
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Generate a figure showing energy and temperature vs time from run.traj, output to plot.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "run.traj",
+        "output_png": "plot.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9076733589172363
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Create a chart of the MD trajectory data in sim.traj using a timestep of 1.0 fs, save the image as result.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "sim.traj",
+        "output_png": "result.png",
+        "timestep_fs": 1.0
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9444379806518555
+    }
+  ],
+  "gpt-6-luna__one_line": [
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Convert the SMILES string 'CCO' into a 3D XYZ structure and save it to ethanol.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "CCO",
+        "output_path": "ethanol.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9738113880157471
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "I have a SMILES 'O' for water -- generate 3D coordinates and write them to water.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "O",
+        "output_path": "water.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8143138885498047
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Turn this SMILES into a molecule file: c1ccccc1, save as benzene.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "c1ccccc1",
+        "output_path": "benzene.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7151339054107666
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Build a periodic simulation box of 15 Angstrom containing 30 copies of water.xyz using packmol.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "water.xyz",
+        "box_size": 15,
+        "n_molecules": 30
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.265739917755127
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Pack 10 molecules from methane.xyz into a cubic box of size 10 Angstrom and save the result to box.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "methane.xyz",
+        "box_size": 10,
+        "n_molecules": 10,
+        "output_file": "box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.0717675685882568
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Use packmol to place 5 copies of ion.xyz and 50 copies of water.xyz into a 20 Angstrom box, saved to mix.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "ion.xyz",
+          "water.xyz"
+        ],
+        "box_size": 20,
+        "n_molecules": [
+          5,
+          50
+        ],
+        "output_file": "mix.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.2403919696807861
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Run a 200-step NVT molecular dynamics simulation at 300 K on structure.xyz using MACE, saving the trajectory to traj.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "structure.xyz",
+        "box_size": 20,
+        "temperature_K": 300,
+        "n_steps": 200,
+        "output_traj": "traj.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.374751091003418
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Simulate NPT dynamics on box.xyz at 310 K and 1 bar for 500 steps with a MACE potential, save to result.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "box.xyz",
+        "box_size": 0,
+        "temperature_K": 310,
+        "n_steps": 500,
+        "model_name": "polar-1-m",
+        "output_traj": "result.traj",
+        "pressure_bar": 1
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.665339708328247
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Perform molecular dynamics on water_box.xyz for 1000 steps at 350 K using the MACE polar model 'polar-1-m', output to sim.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "water_box.xyz",
+        "box_size": 0,
+        "temperature_K": 350,
+        "n_steps": 1000,
+        "model_name": "polar-1-m",
+        "output_traj": "sim.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.1308107376098633
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Plot the potential energy and temperature over time from the trajectory nvt.traj and save it as analysis.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "nvt.traj",
+        "output_png": "analysis.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.164015293121338
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Generate a figure showing energy and temperature vs time from run.traj, output to plot.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "run.traj",
+        "output_png": "plot.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8111827373504639
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Create a chart of the MD trajectory data in sim.traj using a timestep of 1.0 fs, save the image as result.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "sim.traj",
+        "output_png": "result.png",
+        "timestep_fs": 1.0
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8675739765167236
+    }
+  ],
+  "gpt-6-luna__none": [
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Convert the SMILES string 'CCO' into a 3D XYZ structure and save it to ethanol.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "CCO",
+        "output_path": "ethanol.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7917323112487793
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "I have a SMILES 'O' for water -- generate 3D coordinates and write them to water.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "O",
+        "output_path": "water.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.028141736984253
+    },
+    {
+      "tool": "smiles_to_xyz",
+      "prompt": "Turn this SMILES into a molecule file: c1ccccc1, save as benzene.xyz.",
+      "called": "smiles_to_xyz",
+      "args": {
+        "smiles": "c1ccccc1",
+        "output_path": "benzene.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.9056901931762695
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Build a periodic simulation box of 15 Angstrom containing 30 copies of water.xyz using packmol.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": "water.xyz",
+        "box_size": 15,
+        "n_molecules": 30
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8561012744903564
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Pack 10 molecules from methane.xyz into a cubic box of size 10 Angstrom and save the result to box.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "methane.xyz"
+        ],
+        "box_size": 10,
+        "n_molecules": [
+          10
+        ],
+        "output_file": "box.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.1222374439239502
+    },
+    {
+      "tool": "packmol_build_system",
+      "prompt": "Use packmol to place 5 copies of ion.xyz and 50 copies of water.xyz into a 20 Angstrom box, saved to mix.xyz.",
+      "called": "packmol_build_system",
+      "args": {
+        "xyz_files": [
+          "ion.xyz",
+          "water.xyz"
+        ],
+        "box_size": 20,
+        "n_molecules": [
+          5,
+          50
+        ],
+        "output_file": "mix.xyz"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8786602020263672
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Run a 200-step NVT molecular dynamics simulation at 300 K on structure.xyz using MACE, saving the trajectory to traj.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "structure.xyz",
+        "box_size": 20,
+        "temperature_K": 300,
+        "n_steps": 200,
+        "model_name": "MACE",
+        "output_traj": "traj.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.4467415809631348
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Simulate NPT dynamics on box.xyz at 310 K and 1 bar for 500 steps with a MACE potential, save to result.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "box.xyz",
+        "box_size": 0,
+        "temperature_K": 310,
+        "n_steps": 500,
+        "model_name": "MACE",
+        "output_traj": "result.traj",
+        "pressure_bar": 1
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.341320276260376
+    },
+    {
+      "tool": "run_nvt_md",
+      "prompt": "Perform molecular dynamics on water_box.xyz for 1000 steps at 350 K using the MACE polar model 'polar-1-m', output to sim.traj.",
+      "called": "run_nvt_md",
+      "args": {
+        "structure_file": "water_box.xyz",
+        "box_size": 20,
+        "temperature_K": 350,
+        "n_steps": 1000,
+        "model_name": "polar-1-m",
+        "output_traj": "sim.traj"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.077132225036621
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Plot the potential energy and temperature over time from the trajectory nvt.traj and save it as analysis.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "nvt.traj",
+        "output_png": "analysis.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.8837809562683105
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Generate a figure showing energy and temperature vs time from run.traj, output to plot.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "run.traj",
+        "output_png": "plot.png"
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 0.7547817230224609
+    },
+    {
+      "tool": "plot_nvt_trajectory",
+      "prompt": "Create a chart of the MD trajectory data in sim.traj using a timestep of 1.0 fs, save the image as result.png.",
+      "called": "plot_nvt_trajectory",
+      "args": {
+        "traj_file": "sim.traj",
+        "output_png": "result.png",
+        "timestep_fs": 1.0
+      },
+      "routing_correct": true,
+      "arg_correct": true,
+      "elapsed": 1.350219964981079
+    }
+  ]
+}
