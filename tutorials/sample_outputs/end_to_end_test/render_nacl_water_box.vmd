@@ -1,0 +1,35 @@
+mol new /groups/ycolon/Orlando/DynaMate2/tutorials/sample_outputs/end_to_end_test/nacl_water_box.xyz type xyz waitfor all
+
+# Periodic box: 12.5 A cubic, matches the real regenerated system
+package require pbctools
+pbc set {12.5 12.5 12.5 90 90 90} -all
+pbc box -color blue3 -width 3
+
+# Representations (plain XYZ has no resname, so select water by exclusion, not the 'water' macro)
+mol delrep 0 top
+mol representation Lines 2.0
+mol selection "not (name Na or name Cl)"
+mol color Name
+mol addrep top
+
+mol representation VDW 0.45
+mol selection "name Na"
+mol color ColorID 0
+mol addrep top
+
+mol representation VDW 0.55
+mol selection "name Cl"
+mol color ColorID 10
+mol addrep top
+
+display projection Orthographic
+display depthcue off
+color Display Background white
+axes location Off
+
+display resetview
+scale by 1.3
+
+render TachyonInternal /tmp/1486908.1.long/claude-240669/-groups-ycolon-Orlando-scratch365-Molec-Mindset-DynaMate2-prod/480225ba-6ee3-492a-896b-635c98b7aaf7/scratchpad/nacl_water_box_render.tga
+
+quit
