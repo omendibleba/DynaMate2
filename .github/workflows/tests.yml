@@ -1,0 +1,38 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tool-file-registration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      # Deliberately minimal: this check only needs dynamate's own
+      # LLM-orchestration deps, not the heavy molecular-simulation stack
+      # (torch, mace-torch, rdkit, ase) -- see tests/test_tool_file_registration.py.
+      - name: Install minimal dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            "langchain>=0.3.23" \
+            "langchain-openai>=0.3.12" \
+            "langchain-community>=0.3.16" \
+            "langgraph>=0.6.7" \
+            "langgraph-supervisor>=0.0.29" \
+            "langgraph-checkpoint-sqlite>=3.0.3" \
+            "python-dotenv>=1.0.0" \
+            "pytest>=8.0"
+
+      - name: Run tool-file registration check
+        run: pytest tests/test_tool_file_registration.py -v
