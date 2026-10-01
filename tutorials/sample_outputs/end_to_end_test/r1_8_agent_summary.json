@@ -1,0 +1,14 @@
+{
+  "fw_ids": [
+    1,
+    2
+  ],
+  "status_before_worker": {
+    "1": "READY",
+    "2": "READY"
+  },
+  "status_after_worker": {
+    "1": "COMPLETED",
+    "2": "COMPLETED"
+  }
+}

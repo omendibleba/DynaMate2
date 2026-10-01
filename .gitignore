@@ -60,3 +60,9 @@ dynamate-data/
 
 ### Local Container builder
 container_build.sh
+
+# ── Local FireWorks test infrastructure (tests/r1_8_fireworks*_demo.py) ──────
+# my_launchpad.yaml points at a throwaway local MongoDB and is recreated per
+# session; launcher_*/ is FireWorks' own per-launch bookkeeping directory.
+my_launchpad.yaml
+launcher_*/
