@@ -1,49 +1,58 @@
 def plot_nvt_trajectory(traj_file: str, output_png: str, timestep_fs: float = 0.5) -> str:
-    """Read an ASE .traj file and plot normalized potential and total energies and temperature vs time.
-
-    Parameters:
-    traj_file (str): Path to the ASE trajectory file (.traj).
-    output_png (str): Path to save the output plot PNG file.
-    timestep_fs (float): Timestep between frames in femtoseconds (default 0.5 fs).
-
-    Returns:
-    str: The output PNG file path.
     """
-    import ase.io
+    Plot potential energy, total energy, and temperature vs time from an ASE
+    NVT/NPT trajectory.
+
+    Reads the trajectory with ase.io.read, extracts per-frame potential energy
+    (get_potential_energy), total energy (get_kinetic_energy + get_potential_energy),
+    and temperature (get_temperature), builds a time axis in picoseconds from
+    timestep_fs, and saves a two-panel figure: normalized potential/total energy
+    on top, temperature on the bottom.
+
+    Parameters
+    ----------
+    traj_file   : str   -- path to the input ASE .traj trajectory file
+    output_png  : str   -- path to save the output plot PNG file
+    timestep_fs : float -- MD timestep in femtoseconds used during the simulation
+                            (default 0.5), used to build the time axis
+
+    Returns
+    -------
+    str -- path to the saved PNG file
+    """
     import matplotlib
-    matplotlib.use('Agg')  # thread-safe non-GUI backend; must precede pyplot import
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
+    from ase.io import read
 
-    # Read all frames from the trajectory
-    frames = ase.io.read(traj_file, index=':')
+    frames = read(traj_file, index=":")
 
-    # Extract energies and temperature
-    pot_energies = np.array([frame.get_potential_energy() for frame in frames])
-    kin_energies = np.array([frame.get_kinetic_energy() for frame in frames])
-    total_energies = pot_energies + kin_energies
-    temperatures = np.array([frame.get_temperature() for frame in frames])
+    potential_energies = np.array([f.get_potential_energy() for f in frames])
+    total_energies = np.array(
+        [f.get_kinetic_energy() + f.get_potential_energy() for f in frames]
+    )
+    temperatures = np.array([f.get_temperature() for f in frames])
 
-    # Time axis in picoseconds
     times_ps = np.arange(len(frames)) * timestep_fs / 1000.0
 
-    # Normalize energies by their mean
-    pot_energies_norm = pot_energies / np.mean(pot_energies)
-    total_energies_norm = total_energies / np.mean(total_energies)
+    norm_potential = potential_energies / potential_energies.mean()
+    norm_total = total_energies / total_energies.mean()
 
-    # Plotting
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 
-    ax1.plot(times_ps, pot_energies_norm, label='Normalized Potential Energy')
-    ax1.plot(times_ps, total_energies_norm, label='Normalized Total Energy')
-    ax1.set_ylabel('Normalized Energy (eV)')
-    ax1.legend()
+    ax1.plot(times_ps, norm_potential, label="Potential Energy (normalized)")
+    ax1.plot(times_ps, norm_total, label="Total Energy (normalized)")
+    ax1.set_ylabel("Normalized Energy", fontsize=15)
+    ax1.legend(fontsize=15)
+    ax1.tick_params(axis="both", labelsize=15)
     ax1.grid(True)
 
-    ax2.plot(times_ps, temperatures, label='Temperature')
-    ax2.set_xlabel('Time (ps)')
-    ax2.set_ylabel('Temperature (K)')
-    ax2.legend()
+    ax2.plot(times_ps, temperatures, color="tab:red", label="Temperature (K)")
+    ax2.set_xlabel("Time (ps)", fontsize=15)
+    ax2.set_ylabel("Temperature (K)", fontsize=15)
+    ax2.legend(fontsize=15)
+    ax2.tick_params(axis="both", labelsize=15)
     ax2.grid(True)
 
     plt.tight_layout()

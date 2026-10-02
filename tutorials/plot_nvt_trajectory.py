@@ -43,14 +43,16 @@ def plot_nvt_trajectory(traj_file: str, output_png: str, timestep_fs: float = 0.
 
     ax1.plot(times_ps, norm_potential, label="Potential Energy (normalized)")
     ax1.plot(times_ps, norm_total, label="Total Energy (normalized)")
-    ax1.set_ylabel("Normalized Energy")
-    ax1.legend()
+    ax1.set_ylabel("Normalized Energy", fontsize=15)
+    ax1.legend(fontsize=15)
+    ax1.tick_params(axis="both", labelsize=15)
     ax1.grid(True)
 
     ax2.plot(times_ps, temperatures, color="tab:red", label="Temperature (K)")
-    ax2.set_xlabel("Time (ps)")
-    ax2.set_ylabel("Temperature (K)")
-    ax2.legend()
+    ax2.set_xlabel("Time (ps)", fontsize=15)
+    ax2.set_ylabel("Temperature (K)", fontsize=15)
+    ax2.legend(fontsize=15)
+    ax2.tick_params(axis="both", labelsize=15)
     ax2.grid(True)
 
     plt.tight_layout()
