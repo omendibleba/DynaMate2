@@ -11,6 +11,11 @@
 #   Install from: http://leandro.iqm.unicamp.br/m3g/packmol/home.shtml
 #   or via conda:  conda install -c conda-forge packmol
 #
+# External service (not pip-installable): a running MongoDB instance is
+# needed for the FireWorks dispatch demo (Section 5.5), as FireWorks'
+# LaunchPad backend. See the "FireWorks dispatch demo" section of README.md
+# for a local, no-root setup.
+#
 # GPU note: MACE simulations require a CUDA-capable GPU.
 # mace-torch installs PyTorch as a dependency; CUDA toolkit must match your driver.
 
@@ -46,6 +51,10 @@ dependencies:
     - rdkit>=2024.9
     - numpy>=1.25
     - matplotlib>=3.8
+    # Workflow-management demonstrations (Section 5.4, 5.5)
+    - tblite[ase]>=0.4.0     # GFN2-xTB calculator for the convergence-gated MD-to-DFT demo
+    - fireworks==2.1.4       # FireWorks dispatch demo; needs a running MongoDB LaunchPad
+    - pymongo>=4.6           # FireWorks' MongoDB client
     # Notebook
     - jupyter
     - ipykernel

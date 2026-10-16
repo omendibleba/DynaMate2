@@ -291,6 +291,7 @@ dependencies:
       - faiss-gpu==1.7.2
       - fastrlock==0.8.3
       - filelock==3.19.1
+      - fireworks==2.1.4
       - foyer==0.7.6
       - frozenlist==1.8.0
       - fsspec==2025.9.0
@@ -359,6 +360,7 @@ dependencies:
       - pydantic==2.12.5
       - pydantic-core==2.41.5
       - pydantic-settings==2.11.0
+      - pymongo==4.18.3
       - pypdf==6.4.1
       - pypdf2==3.0.1
       - python-docx==1.2.0
@@ -373,6 +375,7 @@ dependencies:
       - soupsieve==2.8
       - sqlite-vec==0.1.7
       - sympy==1.13.1
+      - tblite[ase]==0.7.0
       - tenacity==9.1.2
       - tiktoken==0.12.0
       - torch==2.5.0+cu121

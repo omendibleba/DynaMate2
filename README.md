@@ -903,6 +903,16 @@ python tests/test_persistence.py
 
 `test_dynamic_agent`, `test_agent_pool`, and `test_add_agent` make real LLM API calls and require a valid `OPENAI_API_KEY`. `test_persistence` does not make LLM calls.
 
+### FireWorks dispatch demo (Section 5.5)
+
+`tests/r1_8_fireworks_agent_demo.py` additionally requires `fireworks` and `pymongo` (see `requirements.txt`/`environment.yml`) and a running MongoDB instance, since FireWorks' `LaunchPad` uses MongoDB as its job-state backend. No root access or system package manager is required: a local, no-root MongoDB can be run from a portable binary tarball (e.g. `mongodb-linux-x86_64-rhel90` from MongoDB's download center), started as:
+
+```bash
+./mongod --dbpath <your-db-dir> --port 27017 --bind_ip 127.0.0.1
+```
+
+and stopped afterward. The DFT hand-off demo, `tests/r3_2_md_dft_demo.py`, additionally requires `tblite[ase]` (GFN2-xTB) but no external service.
+
 ---
 
 ## Troubleshooting: Common Errors and How to Avoid Them

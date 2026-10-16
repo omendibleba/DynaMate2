@@ -32,3 +32,8 @@ dependencies:
     - rdkit>=2024.9.6
     - numpy>=1.25.0
     - matplotlib>=3.8.0
+    # Workflow-management demonstrations (Section 5.4, 5.5); the FireWorks
+    # demo also needs a running MongoDB instance (not pip-installable).
+    - tblite[ase]>=0.4.0
+    - fireworks==2.1.4
+    - pymongo>=4.6

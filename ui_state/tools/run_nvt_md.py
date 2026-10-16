@@ -1,71 +1,121 @@
 def run_nvt_md(
-    model_path: str,
     structure_file: str,
     box_size: float,
     temperature_K: float,
     n_steps: int,
+    model_name: str = "polar-1-m",
     output_traj: str = "nvt.traj",
     timestep_fs: float = 0.5,
     friction: float = 0.01,
-    traj_interval: int = 10,
+    traj_interval: int = None,
     log_interval: int = 10,
     log_file: str = "nvt.log",
     device: str = "cuda",
+    default_dtype: str = "float32",
+    enable_cueq: bool = True,
+    charge: int = 0,
+    spin: int = 1,
+    external_field: list = [0.0, 0.0, 0.0],
+    pressure_bar: float = None,
+    minimize_steps: int = 0,
+    fmax: float = 0.5,
 ) -> str:
     """
-    Run an NVT Langevin MD simulation with PBC using a MACE calculator.
+    Run a molecular dynamics simulation with a MACE polar calculator: NVT (Langevin
+    thermostat) by default, or NPT (Berendsen thermostat + barostat, cell size
+    changes so the density equilibrates) if pressure_bar is given. Optionally
+    relaxes the structure first (minimize_steps > 0) to remove bad contacts left
+    by packing.
 
     Parameters
     ----------
-    model_path     : str   -- path to the MACE .model or -lammps.pt file
     structure_file : str   -- path to the input structure (XYZ or extxyz)
     box_size       : float -- size of the cubic simulation box in Angstroms
     temperature_K  : float -- target temperature in Kelvin
     n_steps        : int   -- number of MD steps to run
+    model_name     : str   -- name of the MACE polar foundation model to use (e.g. 'polar-1-m');
+                               downloaded and cached automatically, no local model file needed
     output_traj    : str   -- path for the output ASE trajectory file
     timestep_fs    : float -- MD timestep in femtoseconds (default 0.5)
     friction       : float -- Langevin friction coefficient in 1/fs (default 0.01)
-    traj_interval  : int   -- write trajectory every N steps (default 100)
+    traj_interval  : int   -- write trajectory every N steps (default None = automatic: about 100
+                               frames per run, i.e. every step for runs of <=100 steps)
     log_interval   : int   -- write log every N steps (default 10)
     log_file       : str   -- path for the MDLogger output file
     device         : str   -- compute device: 'cuda' or 'cpu'
+    default_dtype  : str   -- 'float32' (default, faster MD, lower GPU memory) or 'float64' (more precise)
+    enable_cueq    : bool  -- use cuequivariance acceleration (default True) -- meaningfully
+                               reduces GPU memory use; requires the cuequivariance/
+                               cuequivariance-torch packages to be installed
+    charge         : int   -- total system charge, set on atoms.info before the calculator runs
+    spin           : int   -- spin multiplicity, set on atoms.info before the calculator runs
+    external_field : sequence of 3 floats -- external field vector, set on atoms.info
+    pressure_bar   : float -- if given (e.g. 1.0), run NPT at this pressure in bar instead of NVT;
+                               box_size is then only the STARTING cell (default None = NVT)
+    minimize_steps : int   -- max geometry-optimization (FIRE) steps before MD; 0 = skip (default).
+                               Recommended (e.g. 50) when the structure comes straight from packmol
+    fmax           : float -- force convergence target for the optimization, eV/A (default 0.5)
 
     Returns
     -------
     str -- path to the written trajectory file
     """
     import os
-    if os.path.exists(output_traj):
-        return f"Trajectory '{output_traj}' already exists. Skipping simulation."
-
     import numpy as np
     from ase import units
     from ase.io import read
     from ase.io.trajectory import Trajectory
     from ase.md import MDLogger
     from ase.md.langevin import Langevin
+    from ase.md.nptberendsen import NPTBerendsen
+    from ase.optimize import FIRE
     from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-    from mace.calculators import MACECalculator
+    from mace.calculators import mace_polar
+
+    if traj_interval is None:
+        traj_interval = max(1, n_steps // 100)
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_traj)), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)
 
     # Load structure and enforce PBC, and box size
     atoms = read(structure_file)
     atoms.set_pbc([True, True, True])
     atoms.set_cell([box_size, box_size, box_size])
 
-    # Attach MACE calculator
-    calculator = MACECalculator(model_path=model_path, device=device)
+    # Attach MACE polar calculator -- a named foundation model, downloaded
+    # and cached automatically, no local .model file needed.
+    calculator = mace_polar(model=model_name, device=device, default_dtype=default_dtype, enable_cueq=enable_cueq)
+    atoms.info["charge"] = charge
+    atoms.info["spin"] = spin
+    atoms.info["external_field"] = list(external_field)
     atoms.calc = calculator
+
+    if minimize_steps and minimize_steps > 0:
+        FIRE(atoms, logfile=None).run(fmax=fmax, steps=minimize_steps)
 
     # Initialise velocities from Maxwell-Boltzmann distribution
     MaxwellBoltzmannDistribution(atoms, temperature_K=temperature_K)
 
-    # Set up Langevin thermostat
-    dyn = Langevin(
-        atoms,
-        timestep=timestep_fs * units.fs,
-        temperature_K=temperature_K,
-        friction=friction / units.fs,
-    )
+    if pressure_bar is None:
+        dyn = Langevin(
+            atoms,
+            timestep=timestep_fs * units.fs,
+            temperature_K=temperature_K,
+            friction=friction / units.fs,
+        )
+    else:
+        # Berendsen weak-coupling: robust for equilibrating density (does not
+        # sample the exact NPT ensemble). Compressibility is that of liquid water.
+        dyn = NPTBerendsen(
+            atoms,
+            timestep=timestep_fs * units.fs,
+            temperature_K=temperature_K,
+            taut=100 * units.fs,
+            pressure_au=pressure_bar * units.bar,
+            taup=1000 * units.fs,
+            compressibility_au=4.57e-5 / units.bar,
+        )
 
     # Print energy and density at each log interval
     def print_properties():
@@ -96,4 +146,4 @@ def run_nvt_md(
     dyn.run(n_steps)
     traj.close()
 
-    return f"Simulation complete: {n_steps} steps at {temperature_K} K. Trajectory saved to {output_traj}"
+    return output_traj
