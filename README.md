@@ -35,6 +35,7 @@ Originally developed as a research framework for molecular simulation workflows 
 - [Running Tests](#running-tests)
 - [Troubleshooting: Common Errors and How to Avoid Them](#troubleshooting-common-errors-and-how-to-avoid-them)
 - [Limitations](#limitations)
+- [License](#license)
 
 ---
 
@@ -1056,3 +1057,7 @@ The LLM decides which tool to call based entirely on the docstring. Vague or mis
 
 **Model context limits.**
 Very long conversations can approach the model's context window. Use separate `--thread-id` values for distinct tasks.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
