@@ -16,8 +16,10 @@
 # Mirrors docker/environment.cpu.yml instead (proven to resolve cleanly on
 # the first try): the same flexible (>=) requirements.txt-derived deps,
 # minus torch/mace-torch — installed separately in the Dockerfile from
-# PyTorch's own cu121 wheel index, the same torch-then-mace-torch pattern
-# the CPU image already uses, just pointed at a different index.
+# PyTorch's own cu130 wheel index (bumped from cu121; see the Dockerfile's
+# own comment on why, next to its cuequivariance pin), the same
+# torch-then-mace-torch pattern the CPU image already uses, just pointed at
+# a different index.
 
 name: dynamate2
 channels:

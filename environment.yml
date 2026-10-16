@@ -18,6 +18,24 @@
 #
 # GPU note: MACE simulations require a CUDA-capable GPU.
 # mace-torch installs PyTorch as a dependency; CUDA toolkit must match your driver.
+#
+# GPU + enable_cueq=True (run_nvt_md's default, mace_polar's CuEq acceleration):
+# needs an exact, tested combination, not whatever mace-torch pulls in on its
+# own. The unpinned latest cuequivariance resolves against a newer cuBLAS than
+# an older torch/cu12x build ships, so its compiled ops fail to load and
+# silently fall back to a pure-Python path mace-torch's own integration code
+# doesn't handle (crashes with "'SegmentedPolynomialNaive' object has no
+# attribute 'buffer_num_segments'" on the first real MD step). After
+# `conda env create`, in this order:
+#   conda activate dynamate
+#   pip install torch==2.10.0+cu130 --index-url https://download.pytorch.org/whl/cu130
+#   pip install cuequivariance==0.8.0 cuequivariance-torch==0.8.0 cuequivariance-ops-torch-cu12==0.8.0
+#   pip install torch==2.10.0+cu130 --index-url https://download.pytorch.org/whl/cu130  # reinstall: the cuequivariance step above can pull in a different torch build
+# This is also what docker/ builds the GPU image with (see Dockerfile). torch's
+# JIT fuser additionally dlopens libnvrtc-builtins.so.13.0 at runtime from
+# site-packages/nvidia/cu13/lib, which isn't on the default library search path;
+# add it to LD_LIBRARY_PATH (see run.sh's APPTAINERENV_LD_LIBRARY_PATH for the
+# exact path) or the first real MD step will crash even with the above installed.
 
 name: dynamate
 channels:

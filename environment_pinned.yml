@@ -1,6 +1,27 @@
 # Fully-pinned environment for maximum reproducibility.
 # Recommended only if you need exact version matching.
 # For a flexible install, use environment.yml instead.
+#
+# This snapshot's own torch==2.5.0+cu121 and cuequivariance*==0.10.0/0.7.0
+# pins (below) do NOT support mace_polar's enable_cueq=True (run_nvt_md's
+# default): that cuequivariance build needs a newer cuBLAS than this torch's
+# cu121 build ships, so its compiled ops fail to load and silently fall back
+# to a pure-Python path mace-torch's own integration code doesn't handle
+# (crashes with "'SegmentedPolynomialNaive' object has no attribute
+# 'buffer_num_segments'" on the first real MD step). This snapshot predates
+# that being root-caused; left as-is here since hand-patching a few lines
+# out of 260 pinned packages would misrepresent the rest as equally
+# reproducible. For a GPU environment where enable_cueq=True actually works,
+# after `conda env create -f environment_pinned.yml`, in this order:
+#   conda activate dynamate
+#   pip install torch==2.10.0+cu130 --index-url https://download.pytorch.org/whl/cu130
+#   pip install cuequivariance==0.8.0 cuequivariance-torch==0.8.0 cuequivariance-ops-torch-cu12==0.8.0
+#   pip install torch==2.10.0+cu130 --index-url https://download.pytorch.org/whl/cu130  # reinstall: the cuequivariance step above can pull in a different torch build
+# This is also what docker/ builds the GPU image with (see Dockerfile). torch's
+# JIT fuser additionally dlopens libnvrtc-builtins.so.13.0 at runtime from
+# site-packages/nvidia/cu13/lib, which isn't on the default library search path;
+# add it to LD_LIBRARY_PATH (see run.sh's APPTAINERENV_LD_LIBRARY_PATH for the
+# exact path) or the first real MD step will crash even with the above installed.
 name: dynamate
 channels:
   - conda-forge

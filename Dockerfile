@@ -85,6 +85,16 @@ ENV MACE_REPO_DIR=/opt/mace
 
 ENV PATH=/opt/conda/envs/dynamate2/bin:$PATH
 
+# torch's JIT fuser (used inside mace_polar) NVRTC-compiles kernels at runtime
+# and dlopens libnvrtc-builtins.so.13.0 by bare name; the image's pip-installed
+# copy lives in nvidia/cu13/lib, which isn't on the default library search
+# path. Without this, mace_polar's enable_cueq=True path (the tool's default)
+# crashes on the first real forward pass. Matches run.sh's APPTAINERENV_
+# workaround for the already-built .sif, which predates this image-level fix
+# and remains in place for that image. Only relevant to the GPU image; this
+# directory doesn't exist on the CPU image, so it's a no-op there.
+ENV LD_LIBRARY_PATH=/opt/conda/envs/dynamate2/lib/python3.10/site-packages/nvidia/cu13/lib
+
 # Apptainer (unlike Docker) shares the host's $HOME into the container by
 # default, and Python auto-adds ~/.local/lib/pythonX.Y/site-packages to
 # sys.path — so whatever the host user has `pip install --user`'d can
