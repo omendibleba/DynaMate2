@@ -445,13 +445,14 @@ DynaMate2/
 | **T2.1** | Build a NaCl aqueous solution box | `smiles_to_xyz`, `packmol_build_system` |
 | **T3** | Run an NVT Langevin MD simulation | `run_nvt_md` |
 | **T4** | Plot energies and temperature from the trajectory | `plot_nvt_trajectory` |
-| **Integration** | Full end-to-end workflow from a single prompt | all five tools |
+| **Integration** | Full end-to-end workflow from a single prompt | `smiles_to_xyz`, `packmol_build_system`, `run_nvt_md`, `plot_nvt_trajectory` (`run_nvt_md` loads the model by name, so `download_mace_model` is not needed) |
 
 All tools are registered and assigned to `mace_md_specialist` through natural language prompts — no tool names need to appear in the user queries.
 
 Reference outputs from a completed run are in `tutorials/sample_outputs/`. Running the notebook regenerates the same files.
 
-**Before running:** download the MACE-POLAR-1-M model once:
+No model download is needed before running: `run_nvt_md` takes `model_name="polar-1-m"` and the MACE
+library fetches it by name on first use. If you want a local copy of the checkpoint anyway (optional):
 ```bash
 mkdir -p tutorials/models
 wget -P tutorials/models https://github.com/ACEsuit/mace-foundations/releases/download/mace_polar_1/MACE-POLAR-1-M.model
