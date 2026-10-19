@@ -25,6 +25,17 @@ tutorials/*.png
 # Do NOT ignore sample_outputs — those are committed reference files
 !tutorials/sample_outputs/
 !tutorials/sample_outputs/**
+# Exception to the exception: these 4 specific files sit at the same path
+# the notebook's final integration cell writes to, and smiles_to_xyz/
+# packmol_build_system skip regeneration if their target file already
+# exists -- so tracking them made the notebook silently reuse stale
+# structures on a fresh clone instead of genuinely running from scratch.
+# The actual "completed run" evidence (trajectory/log/plot) stays tracked
+# below; these are just the intermediate starting structures.
+tutorials/sample_outputs/end_to_end_test/water.xyz
+tutorials/sample_outputs/end_to_end_test/na.xyz
+tutorials/sample_outputs/end_to_end_test/cl.xyz
+tutorials/sample_outputs/end_to_end_test/nacl_water_box.xyz
 
 # ── State directories (auto-generated at runtime) ────────────────────────────
 tutorials/tutorial_state/
