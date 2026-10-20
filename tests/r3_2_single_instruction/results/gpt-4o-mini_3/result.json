@@ -1,0 +1,58 @@
+{
+  "model": "gpt-4o-mini",
+  "outcome": "FAIL",
+  "reasons": [
+    "killed by hand: runaway run_nvt_md n_steps=1 loop after convergence (guard could not stop background threads)",
+    "check #2 converged but next tool was run_nvt_md",
+    "no DFT result file",
+    "unexpected n_steps in run_nvt_md calls: [1, 1, 1, 1, 1, 1, 1]"
+  ],
+  "elapsed_s": null,
+  "md_n_steps_per_call": [
+    14,
+    16,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "n_checks": 2,
+  "branch_fired": 1,
+  "checks": [
+    {
+      "converged": false,
+      "density_g_per_cm3_recent": 1.0308083918646618,
+      "density_g_per_cm3_previous": 1.0302163263473556,
+      "percent_change": 0.05747001888480532,
+      "n_frames_available": 15,
+      "recommendation": "extend_equilibration"
+    },
+    {
+      "converged": true,
+      "density_g_per_cm3_recent": 1.0310267266580193,
+      "density_g_per_cm3_previous": 1.0307293664249948,
+      "percent_change": 0.028849496551736357,
+      "n_frames_available": 17,
+      "recommendation": "proceed"
+    }
+  ],
+  "handoff_to_dft_specialist": false,
+  "dft_energy_eV": null,
+  "tool_sequence": [
+    "run_nvt_md",
+    "check_density_convergence",
+    "run_nvt_md",
+    "check_density_convergence",
+    "run_nvt_md",
+    "run_nvt_md",
+    "run_nvt_md",
+    "run_nvt_md",
+    "run_nvt_md",
+    "run_nvt_md",
+    "run_nvt_md"
+  ],
+  "error": "killed by hand: runaway run_nvt_md n_steps=1 loop after convergence (guard could not stop background threads)"
+}

@@ -1,0 +1,95 @@
+{
+  "model": "gpt-6-luna",
+  "outcome": "FAIL",
+  "reasons": [
+    "check #1 converged but next tool was run_nvt_md",
+    "check #2 converged but next tool was run_nvt_md",
+    "check #3 converged but next tool was run_nvt_md",
+    "check #4 converged but next tool was run_nvt_md",
+    "check #5 converged but next tool was run_nvt_md",
+    "check #6 converged but next tool was run_nvt_md",
+    "converged at first check, so the branch did not fire"
+  ],
+  "elapsed_s": 162.4,
+  "md_n_steps_per_call": [
+    14,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16
+  ],
+  "n_checks": 6,
+  "branch_fired": 0,
+  "checks": [
+    {
+      "converged": true,
+      "density_g_per_cm3_recent": 1.0305423713136928,
+      "density_g_per_cm3_previous": 1.0300425036969367,
+      "percent_change": 0.04852883400072735,
+      "n_frames_available": 15,
+      "recommendation": "proceed"
+    },
+    {
+      "converged": true,
+      "density_g_per_cm3_recent": 1.0307699372272832,
+      "density_g_per_cm3_previous": 1.030317645521416,
+      "percent_change": 0.04389827815073898,
+      "n_frames_available": 17,
+      "recommendation": "proceed"
+    },
+    {
+      "converged": true,
+      "density_g_per_cm3_recent": 1.0306754667639217,
+      "density_g_per_cm3_previous": 1.0301777441027122,
+      "percent_change": 0.04831425101723855,
+      "n_frames_available": 17,
+      "recommendation": "proceed"
+    },
+    {
+      "converged": true,
+      "density_g_per_cm3_recent": 1.0309735621361427,
+      "density_g_per_cm3_previous": 1.0305254108823803,
+      "percent_change": 0.04348764708079166,
+      "n_frames_available": 17,
+      "recommendation": "proceed"
+    },
+    {
+      "converged": true,
+      "density_g_per_cm3_recent": 1.030957014946102,
+      "density_g_per_cm3_previous": 1.0305245614750498,
+      "percent_change": 0.041964402132565984,
+      "n_frames_available": 17,
+      "recommendation": "proceed"
+    },
+    {
+      "converged": true,
+      "density_g_per_cm3_recent": 1.031101072624011,
+      "density_g_per_cm3_previous": 1.0307389722329443,
+      "percent_change": 0.03513017367358578,
+      "n_frames_available": 17,
+      "recommendation": "proceed"
+    }
+  ],
+  "handoff_to_dft_specialist": true,
+  "dft_energy_eV": -8985.304283449037,
+  "tool_sequence": [
+    "run_nvt_md",
+    "check_density_convergence",
+    "run_nvt_md",
+    "check_density_convergence",
+    "run_nvt_md",
+    "check_density_convergence",
+    "run_nvt_md",
+    "check_density_convergence",
+    "run_nvt_md",
+    "check_density_convergence",
+    "run_nvt_md",
+    "check_density_convergence",
+    "run_nvt_md",
+    "run_dft_single_point"
+  ],
+  "error": null,
+  "final_message": "Transferring back to supervisor"
+}
