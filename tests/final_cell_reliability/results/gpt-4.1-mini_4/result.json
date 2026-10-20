@@ -1,0 +1,20 @@
+{
+  "model": "gpt-4.1-mini",
+  "outcome": "SUCCESS",
+  "reasons": [],
+  "elapsed_s": 64.6,
+  "n_tool_calls": 6,
+  "n_frames": 101,
+  "final_density": 1.0351231907511498,
+  "box_formula_ok": true,
+  "box_bytes_equal_committed": true,
+  "tool_sequence": [
+    "smiles_to_xyz",
+    "smiles_to_xyz",
+    "smiles_to_xyz",
+    "packmol_build_system",
+    "run_nvt_md",
+    "plot_nvt_trajectory"
+  ],
+  "error": null
+}
