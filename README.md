@@ -915,6 +915,10 @@ python tests/test_persistence.py
 
 and stopped afterward. The DFT hand-off demo, `tests/r3_2_md_dft_demo.py`, additionally requires `tblite[ase]` (GFN2-xTB) but no external service.
 
+Both demo scripts start from `tutorials/sample_outputs/end_to_end_test/nacl_water_box.xyz`, which is
+not committed. Run the tutorial notebook's final integration cell first to generate it. The scripts
+use container paths (`/app/...`), so run them inside the container with the repo bound to `/app`.
+
 ---
 
 ## Troubleshooting: Common Errors and How to Avoid Them
