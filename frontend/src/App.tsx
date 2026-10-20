@@ -116,7 +116,7 @@ function App() {
               MD, and plot the trajectory.
             </p>
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {['MACE-MP-0b3', 'ASE MD', 'Packmol', 'RDKit', 'LangGraph'].map((badge) => (
+              {['MACE-POLAR', 'ASE MD', 'Packmol', 'RDKit', 'LangGraph'].map((badge) => (
                 <span
                   key={badge}
                   className="rounded-full border border-line-strong bg-surface-hover px-2.5 py-0.5 text-xs text-ink-muted"
